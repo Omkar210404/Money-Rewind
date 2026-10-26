@@ -114,7 +114,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    document.title = route === 'methods' ? 'Methods & sources · Time Machine for Money' : route === 'compare' ? 'Compare countries · Time Machine for Money' : 'Time Machine for Money'
+    document.title = route === 'methods' ? 'Methods & sources · Money Rewind' : route === 'compare' ? 'Compare countries · Money Rewind' : 'Money Rewind'
   }, [route])
 
   return (
@@ -180,9 +180,9 @@ function TopBar({ route, online, load, live: liveData, fresh, country }) {
     <header className="topbar">
       <div className="topbar-row">
       <a className="skip" href="#main">Skip to content</a>
-      <a href="#/" className="brand" aria-label="Time Machine for Money, home">
+      <a href="#/" className="brand" aria-label="Money Rewind, home">
         <Logo />
-        <span>Time Machine <i>for</i> Money</span>
+        <span>Money <i>Rewind</i></span>
       </a>
       <nav aria-label="Main">
         {nav.map(([id, label]) => (
@@ -207,7 +207,7 @@ function Footer({ data }) {
   return (
     <footer className="footer">
       <div>
-        <b className="foot-brand">Time Machine for Money</b>
+        <b className="foot-brand">Money Rewind</b>
         <p>What everyday money buys across time, and whether income kept up.</p>
       </div>
       <div className="foot-sources">
@@ -244,7 +244,7 @@ function ErrorState({ onRetry }) {
   return (
     <section className="state-card glass" role="alert">
       <p className="eyebrow">Couldn’t reach the data</p>
-      <h2>The time machine needs its fuel.</h2>
+      <h2>The exhibit needs its data.</h2>
       <p>We couldn’t load the price data and there is no saved copy on this device yet. Check your connection and try again.</p>
       <button className="btn-gold" onClick={onRetry}>Try again</button>
     </section>

@@ -1,4 +1,4 @@
-"""Build public/data.json for Time Machine for Money.
+"""Build public/data.json for Money Rewind.
 
 Standard library only. Run from the project root:
 
@@ -29,7 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "scripts" / ".cache"
 OUT = ROOT / "public" / "data.json"
-UA = {"User-Agent": "Mozilla/5.0 (money-time-machine data build)"}
+UA = {"User-Agent": "Mozilla/5.0 (money-rewind data build)"}
 
 FIRST_YEAR = 1960
 LAST_YEAR = date.today().year - 1  # the current year never has annual data yet

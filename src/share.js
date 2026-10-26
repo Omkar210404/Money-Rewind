@@ -126,7 +126,7 @@ export async function drawShareCard(card) {
   wrap(g, card.footnote, 64, H - 128, 560, 20)
   g.fillStyle = '#f1e7d0'
   g.font = '400 18px "Fraunces Variable", Georgia, serif'
-  g.fillText('Time Machine for Money', 64, H - 48)
+  g.fillText('Money Rewind', 64, H - 48)
 
   return new Promise((resolve) => cv.toBlob(resolve, 'image/png'))
 }

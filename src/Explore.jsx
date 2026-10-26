@@ -494,7 +494,7 @@ function BirthYear({ data, country, amount, now, onClose, onApply, reduced, imag
       setBusy(false)
     }
   }
-  const fileName = `time-machine-${country.iso3.toLowerCase()}-${shown}.png`
+  const fileName = `money-rewind-${country.iso3.toLowerCase()}-${shown}.png`
   const canShare = card && typeof navigator.canShare === 'function' && navigator.canShare({ files: [new File([card.blob], fileName, { type: 'image/png' })] })
 
   return (
@@ -555,7 +555,7 @@ function BirthYear({ data, country, amount, now, onClose, onApply, reduced, imag
                     <div className="share-actions">
                       <button className="btn" onClick={() => downloadBlob(card.blob, fileName)}><Icon.Download /> Download PNG</button>
                       {canShare && (
-                        <button className="btn ghost" onClick={() => navigator.share({ files: [new File([card.blob], fileName, { type: 'image/png' })], title: 'Time Machine for Money' }).catch(() => {})}>
+                        <button className="btn ghost" onClick={() => navigator.share({ files: [new File([card.blob], fileName, { type: 'image/png' })], title: 'Money Rewind' }).catch(() => {})}>
                           <Icon.Share /> Share
                         </button>
                       )}

@@ -1,4 +1,4 @@
-# Time Machine for Money
+# Money Rewind
 
 See what money buys across time, and whether income kept up. Pick an amount and a country, drag the gold timeline, and a pile of everyday things (bread, milk, petrol, a cinema ticket, a gram of gold) grows or dissolves into gold dust on a pedestal, year by year since 1960. Built on open World Bank data, with every estimate labelled.
 
