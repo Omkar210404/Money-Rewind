@@ -1,34 +1,72 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import Pile from './Pile.jsx'
 import Timeline from './Timeline.jsx'
 import IncomeChart from './IncomeChart.jsx'
 import { ItemArt } from './Art.jsx'
 import { setDustStream } from './Particles.jsx'
+import { downloadBlob, drawShareCard } from './share.js'
 import {
-  cpiAt, fmtCount, fmtMoney, fmtShareOfMonth, incomeAt, itemNoun, kindLabel, latestYear, priceAt,
+  cpiAt, fmtCount, fmtHours, fmtMoney, fmtShareOfMonth, hourlyAt, incomeAt, itemNoun, kindLabel, latestYear, priceAt,
 } from './data.js'
 
-function useCounts(data, country, amount, year) {
+/** What `budget(year)` buys of each item in `year`. */
+export function useCounts(data, country, budget, year) {
   return useMemo(() => {
     const prices = {}
     const counts = {}
+    const money = budget(year)
     for (const it of data.items) {
       const p = priceAt(data, country, it.id, year)
       prices[it.id] = p
-      counts[it.id] = p && p.value > 0 ? amount / p.value : null
+      counts[it.id] = p && p.value > 0 && money != null ? money / p.value : null
     }
-    return { prices, counts }
-  }, [data, country, amount, year])
+    return { prices, counts, money }
+  }, [data, country, budget, year])
 }
 
-export default function Explore({ data, images, reduced, state, set }) {
-  const { iso, amount, year, ghostYear } = state
+export function ModeSeg({ active, go }) {
+  return (
+    <div className="seg" role="group" aria-label="View">
+      {[
+        ['prices', 'Prices'],
+        ['hours', 'Hours of work'],
+        ['compare', 'Compare countries'],
+      ].map(([id, label]) => (
+        <button key={id} className={active === id ? 'on' : ''} aria-pressed={active === id} onClick={() => go(id)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export function NumberInput({ value, onChange, max = 999999999, ...rest }) {
+  return (
+    <input
+      inputMode="numeric"
+      value={value.toLocaleString('en')}
+      onChange={(e) => {
+        const n = Number(e.target.value.replace(/[^\d]/g, '').slice(0, 9))
+        onChange(Math.min(max, Math.max(1, n || 1)))
+      }}
+      {...rest}
+    />
+  )
+}
+
+export default function Explore({ data, images, reduced, state, set, overrides }) {
+  const { iso, amount, hours, year, ghostYear, mode } = state
   const country = data.countries.find((c) => c.iso3 === iso) ?? data.countries[0]
   const now = latestYear(data, country)
   const [minY, maxY] = data.years
-  const main = useCounts(data, country, amount, year)
-  const ghost = useCounts(data, country, amount, ghostYear)
+  const isHours = mode === 'hours'
+  const budget = useMemo(
+    () => (isHours ? (y) => (hourlyAt(data, country, y) == null ? null : hours * hourlyAt(data, country, y)) : () => amount),
+    [isHours, hours, amount, data, country],
+  )
+  const main = useCounts(data, country, budget, year)
+  const ghost = useCounts(data, country, budget, ghostYear)
   const [sheet, setSheet] = useState(false)
   const [birthOpen, setBirthOpen] = useState(false)
   const pileWrap = useRef(null)
@@ -37,17 +75,13 @@ export default function Explore({ data, images, reduced, state, set }) {
   // a faint stream of dust from the right edge of the main pile, only while the hero is on screen
   useEffect(() => {
     if (reduced) return
-    let on = false
     const src = () => {
       const el = pileWrap.current
       if (!el) return null
       const r = el.getBoundingClientRect()
       return new DOMRect(r.left + r.width * 0.66, r.top + r.height * 0.3, r.width * 0.12, r.height * 0.18)
     }
-    const io = new IntersectionObserver(([e]) => {
-      on = e.isIntersecting
-      setDustStream(on ? src : null)
-    })
+    const io = new IntersectionObserver(([e]) => setDustStream(e.isIntersecting ? src : null))
     io.observe(hero.current)
     return () => {
       io.disconnect()
@@ -57,10 +91,10 @@ export default function Explore({ data, images, reduced, state, set }) {
 
   const hasAny = Object.values(main.counts).some((c) => c != null)
   const note = country.currencyNote && (year < country.currencyNote.before || ghostYear < country.currencyNote.before) ? country.currencyNote.text : null
-
   const amountText = amount.toLocaleString('en')
+  const what = isHours ? `${hours} hour${hours === 1 ? '' : 's'} of average work` : `${country.symbol}${amountText}`
   const pileLabel = (yr, counts) =>
-    `${country.symbol}${amountText} in ${yr} buys: ` +
+    `${what} in ${yr} buys: ` +
     data.items.map((it) => (counts[it.id] == null ? `${it.name}: no data` : `${fmtCount(counts[it.id])} ${it.plural}`)).join(', ')
 
   return (
@@ -69,22 +103,23 @@ export default function Explore({ data, images, reduced, state, set }) {
         <div className="spotlight" aria-hidden="true" />
         <div className="hero-copy">
           <label className="big-number">
-            <span className="sym">{country.symbol}</span>
-            <input
-              aria-label={`Amount in ${country.currency}`}
-              inputMode="numeric"
-              value={amountText}
-              style={{ width: `${Math.max(2, amountText.length) * 0.62 + 0.1}em` }}
-              onChange={(e) => {
-                const n = Number(e.target.value.replace(/[^\d]/g, '').slice(0, 9))
-                set.amount(n > 0 ? n : 1)
-              }}
-            />
+            {!isHours && <span className="sym">{country.symbol.trim()}</span>}
+            {/* the hidden copy of the text sizes the input to exactly its content */}
+            <span className="autosize" data-value={(isHours ? hours : amount).toLocaleString('en')}>
+              <NumberInput
+                aria-label={isHours ? 'Hours of work' : `Amount in ${country.currency}`}
+                value={isHours ? hours : amount}
+                max={isHours ? 9999 : undefined}
+                onChange={isHours ? set.hours : set.amount}
+                size={1}
+              />
+            </span>
+            {isHours && <span className="unit">{hours === 1 ? 'hour' : 'hours'}</span>}
           </label>
           <p className="caption">
-            buys you this in{' '}
+            {isHours ? 'of average work buys you this in ' : 'buys you this in '}
             <AnimatePresence mode="popLayout" initial={false}>
-              <motion.span
+              <m.span
                 key={year}
                 className="caption-year"
                 initial={reduced ? false : { opacity: 0, y: 10 }}
@@ -93,11 +128,12 @@ export default function Explore({ data, images, reduced, state, set }) {
                 transition={{ duration: 0.18 }}
               >
                 {year}
-              </motion.span>
+              </m.span>
             </AnimatePresence>
           </p>
           <p className="sublabel">
             {country.name} · {country.currency}
+            {isHours && main.money != null && <span>· an hour ≈ {fmtMoney(country, main.money / hours)}</span>}
             {!hasAny && <span className="nodata-pill">no data for {year}</span>}
           </p>
         </div>
@@ -106,7 +142,7 @@ export default function Explore({ data, images, reduced, state, set }) {
           <div className="ghost-wrap">
             <div className="annotation">
               <span className="anno-year">{ghostYear}</span>
-              <span className="anno-text">the same {country.symbol}{amountText} bought</span>
+              <span className="anno-text">{isHours ? `the same ${hours === 1 ? 'hour' : 'hours'} bought` : `the same ${country.symbol.trim()}${amountText} bought`}</span>
               <span className="anno-line" aria-hidden="true" />
             </div>
             <Pile counts={ghost.counts} items={data.items} images={images} ghost reduced={reduced} label={pileLabel(ghostYear, ghost.counts)} />
@@ -121,26 +157,15 @@ export default function Explore({ data, images, reduced, state, set }) {
             <span /> {sheet ? 'Close' : 'Controls & details'}
           </button>
           <div className="panel-body">
-            <div className="seg" role="group" aria-label="View">
-              <button className="on" aria-pressed="true">Prices</button>
-              <button disabled title="Coming soon">Hours of work</button>
-              <button disabled title="Coming soon">Compare countries</button>
-            </div>
+            <ModeSeg active={mode} go={set.mode} />
             <div className="field">
               <label htmlFor="country">Country</label>
-              <select id="country" value={country.iso3} onChange={(e) => set.iso(e.target.value)}>
-                {data.countries.map((c) => (
-                  <option key={c.iso3} value={c.iso3}>
-                    {c.name} ({c.symbol})
-                  </option>
-                ))}
-              </select>
+              <CountrySelect id="country" data={data} value={country.iso3} onChange={set.iso} />
             </div>
             <div className="field-row">
               <div className="field">
-                <label htmlFor="amount">Amount</label>
-                <input id="amount" inputMode="numeric" value={amountText}
-                  onChange={(e) => set.amount(Math.max(1, Number(e.target.value.replace(/[^\d]/g, '').slice(0, 9)) || 1))} />
+                <label htmlFor="amount">{isHours ? 'Hours of work' : 'Amount'}</label>
+                <NumberInput id="amount" value={isHours ? hours : amount} max={isHours ? 9999 : undefined} onChange={isHours ? set.hours : set.amount} />
               </div>
               <div className="field">
                 <label htmlFor="ghost">Compare with</label>
@@ -151,10 +176,16 @@ export default function Explore({ data, images, reduced, state, set }) {
                 </select>
               </div>
             </div>
+            {isHours && (
+              <p className="fine panel-note">
+                An hour of average work = GDP per capita ÷ 2,080 hours (40 hours × 52 weeks). A rough proxy, not a wage.
+              </p>
+            )}
             <button className="btn-ghost" onClick={() => setBirthOpen(true)}>
               ✦ Born in…? See then vs now
             </button>
-            <Ledger data={data} country={country} amount={amount} year={year} main={main} images={images} />
+            <Ledger data={data} country={country} year={year} view={main} images={images} mode={mode} title={`In ${year}, ${what} buys`}
+              overrides={overrides} setOverride={set.override} />
           </div>
         </aside>
 
@@ -167,7 +198,7 @@ export default function Explore({ data, images, reduced, state, set }) {
 
       <AnimatePresence>
         {birthOpen && (
-          <BirthYear data={data} country={country} amount={amount} now={now} reduced={reduced}
+          <BirthYear data={data} country={country} amount={amount} now={now} reduced={reduced} images={images}
             onClose={() => setBirthOpen(false)}
             onApply={(by) => {
               set.ghostYear(by)
@@ -179,28 +210,99 @@ export default function Explore({ data, images, reduced, state, set }) {
   )
 }
 
-function Ledger({ data, country, amount, year, main, images }) {
+export function CountrySelect({ data, value, onChange, ...rest }) {
+  const sorted = [...data.countries].sort((a, b) => a.name.localeCompare(b.name))
   return (
-    <div className="ledger">
-      <h3>In {year}, {country.symbol}{amount.toLocaleString('en')} buys</h3>
+    <select value={value} onChange={(e) => onChange(e.target.value)} {...rest}>
+      {sorted.map((c) => (
+        <option key={c.iso3} value={c.iso3}>
+          {c.name} ({c.symbol.trim()})
+        </option>
+      ))}
+    </select>
+  )
+}
+
+/** Item list with source labels and the "set your own price" editor. */
+export function Ledger({ data, country, year, view, images, mode, title, overrides, setOverride, compact }) {
+  const [editing, setEditing] = useState(null)
+  const hourly = hourlyAt(data, country, year)
+  return (
+    <div className={`ledger${compact ? ' compact' : ''}`}>
+      {title && <h3>{title}</h3>}
       <ul>
         {data.items.map((it) => {
-          const p = main.prices[it.id]
-          const c = main.counts[it.id]
+          const p = view.prices[it.id]
+          const c = view.counts[it.id]
+          const mine = overrides?.[country.iso3]?.[it.id]
           return (
             <li key={it.id} className={p ? '' : 'missing'}>
               <span className="ledger-art"><ItemArt id={it.id} images={images} /></span>
               <span className="ledger-main">
                 <b>{c == null ? 'no data' : fmtCount(c)}</b> {c == null ? it.name.toLowerCase() : itemNoun(it, c)}
                 <small>
-                  {p ? `${fmtMoney(country, p.value)} per ${it.unit} · ${kindLabel(p)}` : 'no price source yet'}
+                  {p
+                    ? `${mode === 'hours' ? `${fmtHours(hourly ? p.value / hourly : null)} of work` : fmtMoney(country, p.value)} per ${it.unit} · ${kindLabel(p)}`
+                    : 'no price source yet'}
                 </small>
               </span>
+              {setOverride && editing !== it.id && (
+                <button className="edit-price" onClick={() => setEditing(it.id)} aria-label={`Set your own price for ${it.name}`} title="Use your own local price">
+                  {mine ? '★' : '✎'}
+                </button>
+              )}
+              {editing === it.id && (
+                <PriceForm
+                  item={it}
+                  country={country}
+                  year={year}
+                  initial={mine?.year === year ? mine.value : p?.value}
+                  hasOwn={!!mine}
+                  onSave={(v) => {
+                    setOverride(country.iso3, it.id, { year, value: v })
+                    setEditing(null)
+                  }}
+                  onRemove={() => {
+                    setOverride(country.iso3, it.id, null)
+                    setEditing(null)
+                  }}
+                  onCancel={() => setEditing(null)}
+                />
+              )}
             </li>
           )
         })}
       </ul>
     </div>
+  )
+}
+
+function PriceForm({ item, country, year, initial, hasOwn, onSave, onRemove, onCancel }) {
+  const [val, setVal] = useState(initial ? String(Number(initial.toPrecision(4))) : '')
+  const ref = useRef(null)
+  useEffect(() => ref.current?.focus(), [])
+  const n = Number(val)
+  return (
+    <form
+      className="price-form"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (n > 0) onSave(n)
+      }}
+      onKeyDown={(e) => e.key === 'Escape' && onCancel()}
+    >
+      <label htmlFor={`own-${item.id}`}>
+        Your price for {item.unit} in {year} ({country.currency})
+      </label>
+      <div className="price-form-row">
+        <input id={`own-${item.id}`} ref={ref} inputMode="decimal" value={val} placeholder="e.g. 45"
+          onChange={(e) => setVal(e.target.value.replace(/[^\d.]/g, ''))} />
+        <button className="btn-gold small" disabled={!(n > 0)}>Save</button>
+        <button type="button" className="btn-text" onClick={onCancel}>Cancel</button>
+      </div>
+      {hasOwn && <button type="button" className="btn-text" onClick={onRemove}>Remove my price</button>}
+      <small>Saved only in this browser. Other years are scaled from it with CPI.</small>
+    </form>
   )
 }
 
@@ -319,10 +421,13 @@ function Wages({ data, country, start, year, images }) {
   )
 }
 
-function BirthYear({ data, country, amount, now, onClose, onApply, reduced }) {
+function BirthYear({ data, country, amount, now, onClose, onApply, reduced, images }) {
   const [val, setVal] = useState('')
   const [shown, setShown] = useState(null)
+  const [card, setCard] = useState(null) // { url, blob }
+  const [busy, setBusy] = useState(false)
   const input = useRef(null)
+  const list = useRef(null)
   const by = Number(val)
   const valid = by >= data.years[0] && by <= now
 
@@ -332,13 +437,14 @@ function BirthYear({ data, country, amount, now, onClose, onApply, reduced }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+  useEffect(() => () => card && URL.revokeObjectURL(card.url), [card])
 
   const lines = shown
     ? data.items
         .map((it) => {
           const a = priceAt(data, country, it.id, shown)
           const b = priceAt(data, country, it.id, now)
-          return a && b ? { it, a: amount / a.value, b: amount / b.value } : null
+          return a && b ? { it, a: amount / a.value, b: amount / b.value, est: a.kind === 'estimated' || b.kind === 'estimated' } : null
         })
         .filter(Boolean)
     : []
@@ -346,10 +452,34 @@ function BirthYear({ data, country, amount, now, onClose, onApply, reduced }) {
   const incB = incomeAt(data, country, now)
   const cpiA = shown ? cpiAt(data, country, shown) : null
   const cpiB = cpiAt(data, country, now)
+  const money = `${country.symbol.trim()}${amount.toLocaleString('en')}`
+  const incomeLine = incA && incB && cpiA && cpiB
+    ? `Since then average income (GDP per capita) grew ${fmtCount(incB / incA)}× while prices grew ${fmtCount(cpiB / cpiA)}×.`
+    : ''
+
+  const makeCard = async () => {
+    setBusy(true)
+    try {
+      const els = list.current ? [...list.current.querySelectorAll('.by-art > *')] : []
+      const blob = await drawShareCard({
+        kicker: `The year I was born · ${country.name}`,
+        big: money,
+        sentence: `bought this in ${shown}. The arrow shows what the same money buys in ${now}.`,
+        rows: lines.map((l, i) => ({ el: els[i], strong: fmtCount(l.a), text: itemNoun(l.it, l.a), note: `→ ${fmtCount(l.b)} in ${now}${l.est ? ' · includes CPI estimates' : ''}` })),
+        footnote: `${incomeLine} Data: World Bank (CC BY 4.0), US BLS, UK ONS and cited reports. Estimates are labelled on the site.`,
+      })
+      if (card) URL.revokeObjectURL(card.url)
+      setCard({ blob, url: URL.createObjectURL(blob) })
+    } finally {
+      setBusy(false)
+    }
+  }
+  const fileName = `time-machine-${country.iso3.toLowerCase()}-${shown}.png`
+  const canShare = card && typeof navigator.canShare === 'function' && navigator.canShare({ files: [new File([card.blob], fileName, { type: 'image/png' })] })
 
   return (
-    <motion.div className="modal-back" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-      <motion.div
+    <m.div className="modal-back" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <m.div
         className="modal glass"
         role="dialog"
         aria-modal="true"
@@ -369,6 +499,7 @@ function BirthYear({ data, country, amount, now, onClose, onApply, reduced }) {
             e.preventDefault()
             if (!valid) return
             setShown(by)
+            setCard(null)
             onApply(by)
           }}
         >
@@ -380,25 +511,41 @@ function BirthYear({ data, country, amount, now, onClose, onApply, reduced }) {
         {shown && (
           <div className="by-result">
             <p className="by-sentence">
-              The year you were born, <em>{shown}</em>, {country.symbol}{amount.toLocaleString('en')} in {country.name} bought
+              The year you were born, <em>{shown}</em>, {money} in {country.name} bought
               {lines.length ? '' : ' … we have no price data for that year.'}
             </p>
-            <ul>
+            <ul ref={list}>
               {lines.map(({ it, a, b }) => (
                 <li key={it.id}>
-                  <b>{fmtCount(a)}</b> {itemNoun(it, a)} <span className="muted">→ {fmtCount(b)} in {now}</span>
+                  <span className="by-art"><ItemArt id={it.id} images={images} /></span>
+                  <span><b>{fmtCount(a)}</b> {itemNoun(it, a)} <span className="muted">→ {fmtCount(b)} in {now}</span></span>
                 </li>
               ))}
             </ul>
-            {incA && incB && cpiA && cpiB && (
-              <p className="fine">
-                Since then average income (GDP per capita) grew {fmtCount(incB / incA)}× while prices grew {fmtCount(cpiB / cpiA)}×.
-              </p>
+            {incomeLine && <p className="fine">{incomeLine}</p>}
+            {lines.length > 0 && (
+              <div className="share">
+                {!card ? (
+                  <button className="btn-gold" onClick={makeCard} disabled={busy}>{busy ? 'Drawing…' : 'Make a share image'}</button>
+                ) : (
+                  <>
+                    <img className="share-preview" src={card.url} alt={`Share card: ${money} in ${country.name}, ${shown} vs ${now}`} />
+                    <div className="share-actions">
+                      <button className="btn-gold" onClick={() => downloadBlob(card.blob, fileName)}>Download PNG</button>
+                      {canShare && (
+                        <button className="btn-ghost inline" onClick={() => navigator.share({ files: [new File([card.blob], fileName, { type: 'image/png' })], title: 'Time Machine for Money' }).catch(() => {})}>
+                          Share…
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
-            <p className="fine">The pedestals now show {shown} (ghost) against {now}. A shareable image card is coming next.</p>
+            <p className="fine">The pedestals now show {shown} (ghost) against {now}.</p>
           </div>
         )}
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   )
 }

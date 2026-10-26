@@ -1,9 +1,11 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
-import { AnimatePresence, motion, MotionConfig, useReducedMotion } from 'framer-motion'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, domAnimation, LazyMotion, m, MotionConfig, useReducedMotion } from 'framer-motion'
 import { ArtDefs, probeImages } from './Art.jsx'
 import { ParticleCanvas } from './Particles.jsx'
 import Explore from './Explore.jsx'
-import { latestYear, loadData, read, store } from './data.js'
+import Compare from './Compare.jsx'
+import { Ticker, useLive } from './Live.jsx'
+import { applyOverrides, latestYear, loadData, read, store } from './data.js'
 
 const Methods = lazy(() => import('./Methods.jsx'))
 
@@ -44,8 +46,13 @@ export default function App() {
   const reduced = !!useReducedMotion()
   const [load, setLoad] = useState({ status: 'loading' })
   const [images, setImages] = useState({})
-  const [prefs, setPrefs] = useState(() => read('mtm:prefs', { iso: 'IND', amounts: {}, ghostYear: 1990 }))
+  const [prefs, setPrefs] = useState(() => ({
+    iso: 'IND', amounts: {}, ghostYear: 1990, mode: 'prices', hours: 1, compareA: 'IND', compareB: 'USA',
+    ...read('mtm:prefs', {}),
+  }))
+  const [overrides, setOverrides] = useState(() => read('mtm:overrides', {}))
   const [year, setYear] = useState(null)
+  const { live, fresh } = useLive()
 
   const fetchData = useCallback(() => {
     setLoad({ status: 'loading' })
@@ -59,35 +66,66 @@ export default function App() {
 
   useEffect(fetchData, [fetchData])
   useEffect(() => store('mtm:prefs', prefs), [prefs])
+  useEffect(() => store('mtm:overrides', overrides), [overrides])
 
-  const data = load.data
-  const country = data && (data.countries.find((c) => c.iso3 === prefs.iso) ?? data.countries[0])
+  const raw = load.data
+  const data = useMemo(() => raw && applyOverrides(raw, overrides), [raw, overrides])
+  const find = (iso, i = 0) => data.countries.find((c) => c.iso3 === iso) ?? data.countries[i]
+  // on Compare the amount belongs to country A
+  const country = data && (route === 'compare' ? find(prefs.compareA) : find(prefs.iso))
   const yr = data ? (year ?? latestYear(data, country)) : null
   const state = data && {
     iso: country.iso3,
     amount: prefs.amounts?.[country.iso3] ?? country.defaultAmount,
+    hours: prefs.hours ?? 1,
+    mode: prefs.mode === 'hours' ? 'hours' : 'prices',
     year: yr,
     ghostYear: prefs.ghostYear ?? 1990,
+    compareA: prefs.compareA,
+    compareB: prefs.compareB,
   }
   const set = {
     iso: (iso) => setPrefs((p) => ({ ...p, iso })),
     amount: (n) => setPrefs((p) => ({ ...p, amounts: { ...p.amounts, [country.iso3]: n } })),
+    hours: (h) => setPrefs((p) => ({ ...p, hours: h })),
     year: setYear,
     ghostYear: (y) => setPrefs((p) => ({ ...p, ghostYear: y })),
+    mode: (m) => {
+      if (m === 'compare') {
+        setPrefs((p) => ({ ...p, compareA: p.iso, compareB: p.iso === p.compareB ? p.compareA : p.compareB }))
+        window.location.hash = '#/compare'
+        return
+      }
+      setPrefs((p) => ({ ...p, mode: m, iso: route === 'compare' ? p.compareA : p.iso }))
+      if (route !== 'explore') window.location.hash = '#/'
+    },
+    compareBasis: (m) => setPrefs((p) => ({ ...p, mode: m })),
+    compareA: (iso) => setPrefs((p) => ({ ...p, compareA: iso, compareB: iso === p.compareB ? p.compareA : p.compareB })),
+    compareB: (iso) => setPrefs((p) => ({ ...p, compareB: iso, compareA: iso === p.compareA ? p.compareB : p.compareA })),
+    swap: () => setPrefs((p) => ({ ...p, compareA: p.compareB, compareB: p.compareA })),
+    override: (iso, item, value) =>
+      setOverrides((o) => {
+        const next = { ...o, [iso]: { ...(o[iso] || {}) } }
+        if (value) next[iso][item] = value
+        else delete next[iso][item]
+        if (!Object.keys(next[iso]).length) delete next[iso]
+        return next
+      }),
   }
 
   useEffect(() => {
-    document.title = route === 'methods' ? 'Methods & sources · Time Machine for Money' : route === 'compare' ? 'Compare · Time Machine for Money' : 'Time Machine for Money'
+    document.title = route === 'methods' ? 'Methods & sources · Time Machine for Money' : route === 'compare' ? 'Compare countries · Time Machine for Money' : 'Time Machine for Money'
   }, [route])
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <MotionConfig reducedMotion="user">
       <ArtDefs />
       <div className="grain" aria-hidden="true" />
-      <ParticleCanvas enabled={!reduced && route === 'explore' && load.status === 'ready'} />
-      <TopBar route={route} online={online} load={load} />
+      <ParticleCanvas enabled={!reduced && route !== 'methods' && load.status === 'ready'} />
+      <TopBar route={route} online={online} load={load} live={live} fresh={fresh} country={country} />
       <AnimatePresence mode="wait" initial={false}>
-        <motion.main
+        <m.main
           key={route}
           id="main"
           className={`page page-${route}`}
@@ -99,18 +137,21 @@ export default function App() {
           {load.status === 'loading' && <Skeleton />}
           {load.status === 'error' && <ErrorState onRetry={fetchData} />}
           {load.status === 'ready' && route === 'explore' && (
-            <Explore data={data} images={images} reduced={reduced} state={state} set={set} />
+            <Explore data={data} images={images} reduced={reduced} state={state} set={set} overrides={overrides} />
           )}
-          {load.status === 'ready' && route === 'compare' && <ComparePlaceholder />}
+          {load.status === 'ready' && route === 'compare' && (
+            <Compare data={data} images={images} reduced={reduced} state={state} set={set} />
+          )}
           {load.status === 'ready' && route === 'methods' && (
             <Suspense fallback={<div className="methods"><div className="sk sk-line" /></div>}>
-              <Methods data={data} />
+              <Methods data={raw} overrides={overrides} />
             </Suspense>
           )}
-        </motion.main>
+        </m.main>
       </AnimatePresence>
       <Footer data={data} />
     </MotionConfig>
+    </LazyMotion>
   )
 }
 
@@ -130,9 +171,11 @@ function Logo() {
   )
 }
 
-function TopBar({ route, online, load }) {
-  const live = online && load.status === 'ready' && !load.fromCache
+function TopBar({ route, online, load, live: liveData, fresh, country }) {
+  const live = online && fresh
   const updated = load.data?.sources?.wb?.updated
+  const label =
+    load.status === 'loading' ? 'Loading data' : !online ? 'Offline · saved data' : live ? 'Live' : liveData ? 'Saved rates' : 'Connecting'
   const nav = [
     ['explore', 'Explore'],
     ['compare', 'Compare'],
@@ -140,6 +183,7 @@ function TopBar({ route, online, load }) {
   ]
   return (
     <header className="topbar">
+      <div className="topbar-row">
       <a className="skip" href="#main">Skip to content</a>
       <a href="#/" className="brand" aria-label="Time Machine for Money, home">
         <Logo />
@@ -149,15 +193,16 @@ function TopBar({ route, online, load }) {
         {nav.map(([id, label]) => (
           <a key={id} href={`#/${id}`} className={route === id ? 'active' : ''} aria-current={route === id ? 'page' : undefined}>
             {label}
-            {route === id && <motion.span layoutId="nav-underline" className="nav-underline" />}
           </a>
         ))}
       </nav>
-      <div className={`live${live ? ' on' : ''}`} title={updated ? `World Bank data last updated ${updated}` : ''}>
+      <div className={`live${live ? ' on' : ''}`} title={`${live ? 'Live exchange rates and metal prices' : 'Showing saved values'}${updated ? ` · World Bank data updated ${updated}` : ''}`}>
         <span className="dot" />
-        {load.status === 'loading' ? 'Loading data' : live ? 'Live data' : 'Offline · saved data'}
+        <span className="live-label">{label}</span>
         {updated && <span className="live-date">WB {updated}</span>}
       </div>
+      </div>
+      <Ticker live={liveData} fresh={live} country={country} />
     </header>
   )
 }
@@ -173,7 +218,9 @@ function Footer({ data }) {
         <p>
           Data: <a href="https://data.worldbank.org/" target="_blank" rel="noreferrer">World Bank</a> (CC BY 4.0),{' '}
           <a href="https://www.bls.gov/cpi/factsheets/average-prices.htm" target="_blank" rel="noreferrer">US BLS</a> (public domain),{' '}
-          <a href="https://www.ons.gov.uk/" target="_blank" rel="noreferrer">UK ONS</a> (OGL v3.0) and cited reports.{' '}
+          <a href="https://www.ons.gov.uk/" target="_blank" rel="noreferrer">UK ONS</a> (OGL v3.0) and cited reports. Live rates by{' '}
+          <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">ExchangeRate-API</a>, metals by{' '}
+          <a href="https://gold-api.com" target="_blank" rel="noreferrer">gold-api.com</a>.{' '}
           <a href="#/methods">Methods & sources</a>
         </p>
         <p className="fine">{data ? `Data built ${data.generated}. ` : ''}Estimates are labelled. Average income is a GDP-per-capita proxy, not wages.</p>
@@ -204,17 +251,6 @@ function ErrorState({ onRetry }) {
       <h2>The time machine needs its fuel.</h2>
       <p>We couldn’t load the price data and there is no saved copy on this device yet. Check your connection and try again.</p>
       <button className="btn-gold" onClick={onRetry}>Try again</button>
-    </section>
-  )
-}
-
-function ComparePlaceholder() {
-  return (
-    <section className="state-card glass">
-      <p className="eyebrow">Compare countries</p>
-      <h2>Two pedestals, one timeline.</h2>
-      <p>Side-by-side countries with a shared slider are being built. Meanwhile, switch country on the Explore page.</p>
-      <a className="btn-gold" href="#/">Back to Explore</a>
     </section>
   )
 }

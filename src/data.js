@@ -43,6 +43,37 @@ export function series(data, country, key, year) {
 }
 
 export const cpiAt = (data, c, y) => series(data, c, 'cpi', y)
+export const fxAt = (data, c, y) => series(data, c, 'fx', y)
+
+/** Hours in a working year used for "hours of work": 52 weeks x 40 hours. */
+export const WORK_HOURS = 2080
+
+/** Average income per hour of work (GDP per capita / 2,080 hours). */
+export function hourlyAt(data, c, y) {
+  const inc = incomeAt(data, c, y)
+  return inc == null ? null : inc / WORK_HOURS
+}
+
+/**
+ * Merge the visitor's own prices into the data. overrides: { ISO3: { item: { year, value } } }.
+ * A personal price becomes one more anchor, so other years are CPI-scaled from it.
+ */
+export function applyOverrides(data, overrides) {
+  if (!overrides || !Object.keys(overrides).length) return data
+  return {
+    ...data,
+    countries: data.countries.map((c) => {
+      const mine = overrides[c.iso3]
+      if (!mine) return c
+      const prices = { ...c.prices }
+      for (const [item, o] of Object.entries(mine)) {
+        if (!(o?.value > 0)) continue
+        prices[item] = { ...(prices[item] || {}), [o.year]: { v: o.value, s: 'user', k: 'yours' } }
+      }
+      return { ...c, prices }
+    }),
+  }
+}
 
 /** Average income proxy (GDP per capita, local currency) for one year. */
 export function incomeAt(data, c, y) {
@@ -73,6 +104,7 @@ export function priceAt(data, c, itemId, y) {
     kind: 'estimated',
     year: y,
     anchorYear: a,
+    anchorKind: obs[a].k,
     source: obs[a].s,
   }
 }
@@ -92,8 +124,10 @@ export function kindLabel(p) {
       return `published ${p.year} figure`
     case 'derived':
       return 'world gold price × exchange rate'
+    case 'yours':
+      return `your price (${p.year})`
     default:
-      return `estimated from CPI (anchored to ${p.anchorYear})`
+      return `estimated from CPI (anchored to ${p.anchorKind === 'yours' ? 'your ' : ''}${p.anchorYear}${p.anchorKind === 'yours' ? ' price' : ''})`
   }
 }
 
@@ -126,6 +160,15 @@ export function fmtShareOfMonth(months) {
   const days = months * 30.44
   if (days >= 1) return `${fmtCount(days)} days`
   return `${fmtCount(days * 24)} hours`
+}
+
+/** "12 min", "2.4 h", "3.1 days" of work (8-hour days) */
+export function fmtHours(h) {
+  if (h == null || !isFinite(h)) return 'no data'
+  if (h < 1 / 60) return '<1 min'
+  if (h < 1) return `${Math.round(h * 60)} min`
+  if (h < 40) return `${fmtCount(h)} h`
+  return `${fmtCount(h / 8)} work days`
 }
 
 export function itemNoun(item, n) {

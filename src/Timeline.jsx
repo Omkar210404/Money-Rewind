@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import { read, store } from './data.js'
 
 // Thin gold timeline: drag, click, or use the arrow keys.
@@ -8,6 +8,7 @@ export default function Timeline({ min, max, value, onChange, ghostYear, nowYear
   const [drag, setDrag] = useState(false)
   const [hint, setHint] = useState(() => !read('mtm:hinted', false))
   const span = max - min || 1
+  const coarse = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
   const pos = (y) => ((y - min) / span) * 100
 
   const dismissHint = useCallback(() => {
@@ -105,7 +106,7 @@ export default function Timeline({ min, max, value, onChange, ghostYear, nowYear
           </div>
           <AnimatePresence>
             {hint && (
-              <motion.div
+              <m.div
                 className="tl-hint"
                 style={{ left: `clamp(var(--hint-half), ${pos(value)}%, calc(100% - var(--hint-half)))`, x: '-50%' }}
                 initial={{ opacity: 0, y: 6 }}
@@ -116,8 +117,8 @@ export default function Timeline({ min, max, value, onChange, ghostYear, nowYear
                 <span className="tl-hint-arrows" aria-hidden="true">
                   ‹ ›
                 </span>
-                Drag the timeline (or press ← →) to travel in time
-              </motion.div>
+                {coarse ? 'Drag the timeline to travel in time' : 'Drag the timeline (or press ← →) to travel in time'}
+              </m.div>
             )}
           </AnimatePresence>
         </div>

@@ -16,7 +16,8 @@ function yearSpan(data, arr) {
   return ys.length ? `${ys[0]}–${ys[ys.length - 1]}` : 'none'
 }
 
-export default function Methods({ data }) {
+export default function Methods({ data, overrides }) {
+  const own = Object.values(overrides || {}).reduce((n, o) => n + Object.keys(o).length, 0)
   return (
     <article className="methods">
       <header>
@@ -37,6 +38,16 @@ export default function Methods({ data }) {
         <p>
           The second layer answers <b>“did income keep up?”</b>: a month of average income = GDP per capita ÷ 12,
           and “months of income to buy” = item price ÷ a month of income.
+        </p>
+        <p>
+          <b>Hours of work</b> re-expresses prices as time: an hour of average work = GDP per capita ÷ 2,080
+          (a 40-hour week, 52 weeks a year), and hours to buy an item = price ÷ that hourly figure. The 2,080 hours is
+          an assumption, not a measurement of how long people really work in each country.
+        </p>
+        <p>
+          <b>Compare countries</b> either converts country A’s amount into B’s currency at that year’s official
+          exchange rate (amount × rate B ÷ rate A, both per US dollar), or gives both countries the same hours of
+          average work.
         </p>
       </section>
 
@@ -88,12 +99,34 @@ export default function Methods({ data }) {
       </section>
 
       <section>
+        <h2>Your own prices</h2>
+        <p>
+          On Explore you can type your local price for any item (the pencil next to it). It is saved only in this
+          browser, shown as “your price”, and used like a published figure: the exact year uses your number and other
+          years are scaled from it with CPI. Measured official years keep their official value.
+          {own ? ` You have ${own} saved price${own === 1 ? '' : 's'}; the table below shows official data only.` : ''}
+        </p>
+      </section>
+
+      <section>
+        <h2>Live rates</h2>
+        <p>
+          The strip under the top bar shows today’s exchange rates from <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">ExchangeRate-API</a> (open access, updated daily)
+          and gold and silver spot prices from <a href="https://gold-api.com" target="_blank" rel="noreferrer">gold-api.com</a>. Both are free and need no key.
+          They refresh every 10 minutes while the page is open, are saved in your browser, and the last saved values
+          (with their time) are shown if a request fails. Live values are context only; the timeline uses annual World Bank data.
+        </p>
+      </section>
+
+      <section>
         <h2>Caveats</h2>
         <ul className="defs">
           <li><b>Income is a proxy.</b> GDP per capita is total output divided by population. It is not wages, it ignores how income is shared, and it includes things households never receive. Read it as “the average person’s share of the economy”.</li>
           <li><b>National averages hide a lot.</b> Prices differ between cities and shops; Japan’s bread and milk are Tokyo prices; India’s milk figure is a single day’s all-India average.</li>
           <li><b>Products change.</b> A 1970 loaf, car fuel or cinema seat is not the same product as today’s.</li>
-          <li><b>Currency changes.</b> Brazil adopted the real in 1994; the World Bank expresses earlier years in today’s reais, so pre-1994 amounts are not money anyone held.</li>
+          <li><b>Currency changes.</b> Brazil (1994), Mexico (1993), Poland (1995) and Türkiye (2005) changed or redenominated their currencies; the World Bank expresses earlier years in today’s units, so those amounts are not money anyone held. A note appears on screen when such a year is shown.</li>
+          <li><b>Euro countries.</b> Income is in euros for all years, but the World Bank’s pre-1999 exchange rates are in the old currencies (marks, francs, lire, pesetas, guilders). The data script converts them at the official fixed euro rates so gold and petrol prices line up with income.</li>
+          <li><b>Most countries have only gold and petrol.</b> Bread, milk and cinema prices come from national sources; outside the countries listed below they show “no data” until you add your own price.</li>
           <li><b>Petrol after 2016.</b> The World Bank stopped publishing pump prices in 2016, so later years outside the US are CPI estimates.</li>
           <li><b>Gold</b> is priced at the world market rate; local retail prices include taxes and making charges.</li>
           <li><b>Latest year.</b> The newest annual figures can be missing or revised; the US CPI series currently ends one year earlier than other countries.</li>

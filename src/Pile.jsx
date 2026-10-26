@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import { ItemArt, Pedestal } from './Art.jsx'
 import { emitDust } from './Particles.jsx'
 import { fmtCount } from './data.js'
@@ -126,7 +126,7 @@ export default function Pile({ counts, items, images, ghost = false, reduced = f
       <Pedestal ghost={ghost} />
       <AnimatePresence initial={!ghost && !reduced}>
         {objects.map((o) => (
-          <motion.div
+          <m.div
             key={o.key}
             ref={(el) => {
               if (el) els.current.set(o.key, el)
@@ -148,7 +148,7 @@ export default function Pile({ counts, items, images, ghost = false, reduced = f
             onClick={onSelect ? () => onSelect(o.id) : undefined}
           >
             <ItemArt id={o.id} images={images} />
-          </motion.div>
+          </m.div>
         ))}
       </AnimatePresence>
       {chips.map(({ it, g, c, top, capped }) => (

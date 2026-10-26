@@ -1,6 +1,6 @@
 // Offline support: the app shell and data.json are cached so the site keeps
 // working with the last data it saw.
-const CACHE = 'mtm-v1'
+const CACHE = 'mtm-v2'
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './data.json', './favicon.svg'])).catch(() => {}))
