@@ -1,8 +1,18 @@
 # Time Machine for Money
 
-A small museum exhibit in the browser. Pick an amount and a country, drag the gold timeline, and a pile of everyday things (bread, milk, petrol, a cinema ticket, a gram of gold) grows or dissolves on a stone pedestal to show what that money bought in each year since 1960. A faded second pedestal holds a comparison year, and a second layer asks whether average income kept up.
+See what money buys across time, and whether income kept up. Pick an amount and a country, drag the gold timeline, and a pile of everyday things (bread, milk, petrol, a cinema ticket, a gram of gold) grows or dissolves into gold dust on a pedestal, year by year since 1960. Built on open World Bank data, with every estimate labelled.
 
 React (Vite, plain JSX) · Framer Motion · Canvas 2D particles · d3-scale · one Python data script · works offline.
+
+![Explore: what $100 buys in 2024, with 1990 as the faded comparison pile](docs/screenshots/explore.png)
+
+| Did income keep up? | Compare countries |
+|---|---|
+| ![Income vs prices, months of income per item, indexed chart](docs/screenshots/income.png) | ![One hour of average work in India vs the United States](docs/screenshots/compare.png) |
+
+| Share card (birth-year mode) | Phone |
+|---|---|
+| ![Generated share image: what ₹100 bought in 1995 vs today](docs/screenshots/share-card.jpg) | <img src="docs/screenshots/phone.png" alt="Explore on a phone" width="260"> |
 
 **What you can do**
 - Scrub 1960 → now for 31 countries and watch the pile change; compare against any year on the ghost pedestal.
