@@ -47,6 +47,49 @@ COUNTRIES = [
                       "text": "Brazil adopted the real in July 1994. Earlier years are older currencies converted to reais by the World Bank, so they are not amounts anyone held at the time."}},
 ]
 
+
+def _euro(iso3, name, old, rate):
+    return {"iso3": iso3, "name": name, "currency": "EUR", "symbol": "€", "defaultAmount": 100,
+            "euroRate": rate,
+            "currencyNote": {"before": 1999,
+                             "text": f"{name} adopted the euro in 1999 (notes and coins in 2002). Earlier years are {old} "
+                                     f"converted at the fixed rate of {rate:g} per euro."}}
+
+
+def _redenominated(iso3, name, currency, symbol, amount, year, text):
+    return {"iso3": iso3, "name": name, "currency": currency, "symbol": symbol, "defaultAmount": amount,
+            "currencyNote": {"before": year, "text": text + " Earlier years are converted by the World Bank, so they are not amounts anyone held at the time."}}
+
+
+COUNTRIES += [
+    {"iso3": "CHN", "name": "China", "currency": "CNY", "symbol": "CN¥", "defaultAmount": 100},
+    _euro("DEU", "Germany", "Deutsche Marks", 1.95583),
+    _euro("FRA", "France", "French francs", 6.55957),
+    _euro("ITA", "Italy", "Italian lire", 1936.27),
+    _euro("ESP", "Spain", "Spanish pesetas", 166.386),
+    _euro("NLD", "Netherlands", "Dutch guilders", 2.20371),
+    {"iso3": "CAN", "name": "Canada", "currency": "CAD", "symbol": "C$", "defaultAmount": 100},
+    {"iso3": "AUS", "name": "Australia", "currency": "AUD", "symbol": "A$", "defaultAmount": 100},
+    {"iso3": "NZL", "name": "New Zealand", "currency": "NZD", "symbol": "NZ$", "defaultAmount": 100},
+    {"iso3": "CHE", "name": "Switzerland", "currency": "CHF", "symbol": "CHF ", "defaultAmount": 100},
+    {"iso3": "SWE", "name": "Sweden", "currency": "SEK", "symbol": "kr ", "defaultAmount": 1000},
+    _redenominated("POL", "Poland", "PLN", "zł ", 100, 1995, "Poland redenominated the złoty in 1995 (1 new złoty = 10,000 old)."),
+    _redenominated("MEX", "Mexico", "MXN", "MX$", 1000, 1993, "Mexico introduced the new peso in 1993 (1 new peso = 1,000 old)."),
+    _redenominated("TUR", "Türkiye", "TRY", "₺", 1000, 2005, "Türkiye introduced the new lira in 2005 (1 new lira = 1,000,000 old)."),
+    {"iso3": "KOR", "name": "South Korea", "currency": "KRW", "symbol": "₩", "defaultAmount": 100000},
+    {"iso3": "IDN", "name": "Indonesia", "currency": "IDR", "symbol": "Rp ", "defaultAmount": 1000000},
+    {"iso3": "VNM", "name": "Viet Nam", "currency": "VND", "symbol": "₫", "defaultAmount": 1000000},
+    {"iso3": "THA", "name": "Thailand", "currency": "THB", "symbol": "฿", "defaultAmount": 1000},
+    {"iso3": "PHL", "name": "Philippines", "currency": "PHP", "symbol": "₱", "defaultAmount": 1000},
+    {"iso3": "SGP", "name": "Singapore", "currency": "SGD", "symbol": "S$", "defaultAmount": 100},
+    {"iso3": "PAK", "name": "Pakistan", "currency": "PKR", "symbol": "Rs ", "defaultAmount": 1000},
+    {"iso3": "BGD", "name": "Bangladesh", "currency": "BDT", "symbol": "৳", "defaultAmount": 1000},
+    {"iso3": "EGY", "name": "Egypt", "currency": "EGP", "symbol": "E£", "defaultAmount": 1000},
+    {"iso3": "NGA", "name": "Nigeria", "currency": "NGN", "symbol": "₦", "defaultAmount": 10000},
+    {"iso3": "KEN", "name": "Kenya", "currency": "KES", "symbol": "KSh ", "defaultAmount": 1000},
+    {"iso3": "ZAF", "name": "South Africa", "currency": "ZAR", "symbol": "R ", "defaultAmount": 100},
+]
+
 ITEMS = [
     {"id": "bread", "name": "Loaf of white bread", "unit": "800 g loaf", "plural": "loaves"},
     {"id": "milk", "name": "Milk", "unit": "1 litre", "plural": "litres of milk"},
@@ -119,6 +162,12 @@ def fetch(url, cache_name, data=None, headers=None, max_age_days=7):
         raise
 
 
+def _key():
+    """Short hash of the country list so the cache refreshes when countries change."""
+    import hashlib
+    return hashlib.sha1(",".join(c["iso3"] for c in COUNTRIES).encode()).hexdigest()[:8]
+
+
 def years():
     return list(range(FIRST_YEAR, LAST_YEAR + 1))
 
@@ -137,7 +186,7 @@ def wb_indicator(code):
     isos = ";".join(c["iso3"] for c in COUNTRIES)
     url = (f"https://api.worldbank.org/v2/country/{isos}/indicator/{code}"
            f"?format=json&per_page=20000&date={FIRST_YEAR}:{LAST_YEAR}")
-    meta, rows = json.loads(fetch(url, f"wb_{code}.json"))
+    meta, rows = json.loads(fetch(url, f"wb_{code}_{_key()}.json"))
     out = {c["iso3"]: {} for c in COUNTRIES}
     for r in rows or []:
         if r["value"] is not None and r["countryiso3code"] in out:
@@ -150,7 +199,7 @@ def wb_fuel():
     isos = ";".join(c["iso3"] for c in COUNTRIES)
     url = (f"https://api.worldbank.org/v2/sources/57/country/{isos}/series/EP.PMP.SGAS.CD"
            f"/version/202012/time/all?format=json&per_page=5000")
-    doc = json.loads(fetch(url, "wb_fuel_archive.json", max_age_days=365))
+    doc = json.loads(fetch(url, f"wb_fuel_archive_{_key()}.json", max_age_days=365))
     out = {c["iso3"]: {} for c in COUNTRIES}
     for r in doc["source"]["data"]:
         if r["value"] is None:
@@ -237,6 +286,8 @@ def ons_annual():
 # ---------------------------------------------------------------- assemble
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     print("World Bank indicators...")
     wb, wb_updated = {}, None
     for k, code in WB_SERIES.items():
@@ -254,7 +305,14 @@ def main():
     gaps = []
     for c in COUNTRIES:
         iso = c["iso3"]
-        fx = wb["fx"][iso]
+        fx = dict(wb["fx"][iso])
+        if c.get("euroRate"):
+            # the World Bank gives pre-1999 rates in the old currency, but income in euros
+            for y in [y for y in fx if y < 1999]:
+                fx[y] = fx[y] / c["euroRate"]
+        jumps = [y for y in fx if y - 1 in fx and fx[y - 1] and not 0.4 < fx[y] / fx[y - 1] < 2.5]
+        if jumps:
+            print(f"  ? {iso}: exchange rate moved >2.5x in {jumps} (currency change or very high inflation - check)")
         prices = {}
 
         def put(item, year, value, source, kind):
@@ -289,7 +347,7 @@ def main():
             if it["id"] not in prices:
                 gaps.append(f"{c['name']}: {it['name']}")
         countries.append({
-            **c,
+            **{k: v for k, v in c.items() if k != "euroRate"},
             "cpi": as_array(wb["cpi"][iso]),
             "fx": as_array(fx),
             "gdppc": as_array(wb["gdppc"][iso]),
