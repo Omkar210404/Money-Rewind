@@ -192,13 +192,13 @@ function TopBar({ route, online, load, live: liveData, fresh, country }) {
         ))}
       </nav>
       <div className="top-right">
-      <Ticker live={liveData} fresh={live} country={country} />
       <div className={`live${live ? ' on' : ''}`} title={`${live ? 'Live exchange rates and metal prices' : 'Showing saved values'}${updated ? ` · World Bank data updated ${updated}` : ''}`}>
         <span className="dot" />
         <span className="live-label">{label}</span>
       </div>
       </div>
       </div>
+      <Ticker live={liveData} fresh={live} country={country} />
     </header>
   )
 }

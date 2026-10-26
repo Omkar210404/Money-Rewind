@@ -41,6 +41,70 @@ export function ArtDefs() {
           <stop offset="0" stopColor="#000" stopOpacity=".55" />
           <stop offset="1" stopColor="#000" stopOpacity="0" />
         </linearGradient>
+        {/* baked crust */}
+        <linearGradient id="r-crust-top" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#c98a45" />
+          <stop offset=".45" stopColor="#a5652b" />
+          <stop offset="1" stopColor="#6e3d17" />
+        </linearGradient>
+        <radialGradient id="r-crust-hi" cx=".35" cy=".25" r=".7">
+          <stop offset="0" stopColor="#f2c88c" stopOpacity=".75" />
+          <stop offset="1" stopColor="#f2c88c" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="r-crust-side" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#b9874f" />
+          <stop offset=".25" stopColor="#e2b67c" />
+          <stop offset=".6" stopColor="#c99357" />
+          <stop offset="1" stopColor="#6d4a2c" />
+        </linearGradient>
+        {/* glass + milk */}
+        <linearGradient id="r-milk" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#d9d8d3" />
+          <stop offset=".3" stopColor="#fbfaf6" />
+          <stop offset=".65" stopColor="#ecebe6" />
+          <stop offset="1" stopColor="#9fa6b3" />
+        </linearGradient>
+        <linearGradient id="r-glass" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#cfe1ea" stopOpacity=".35" />
+          <stop offset=".5" stopColor="#ffffff" stopOpacity=".08" />
+          <stop offset="1" stopColor="#9fb6c8" stopOpacity=".3" />
+        </linearGradient>
+        <linearGradient id="r-foil" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#2c4f86" />
+          <stop offset=".35" stopColor="#7ea2d6" />
+          <stop offset=".7" stopColor="#3b65a3" />
+          <stop offset="1" stopColor="#1d355d" />
+        </linearGradient>
+        {/* enamelled steel can */}
+        <linearGradient id="r-can" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#5a140e" />
+          <stop offset=".22" stopColor="#a7311f" />
+          <stop offset=".4" stopColor="#c4472f" />
+          <stop offset=".62" stopColor="#8e2618" />
+          <stop offset="1" stopColor="#3f0d08" />
+        </linearGradient>
+        <linearGradient id="r-can-side" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#5e160e" />
+          <stop offset="1" stopColor="#2a0805" />
+        </linearGradient>
+        <linearGradient id="r-can-top" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#d9573b" />
+          <stop offset="1" stopColor="#8f2719" />
+        </linearGradient>
+        <linearGradient id="r-steel" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#3a3d44" />
+          <stop offset=".4" stopColor="#a9adb5" />
+          <stop offset="1" stopColor="#2b2e34" />
+        </linearGradient>
+        {/* ticket card */}
+        <linearGradient id="r-card" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f6eedb" />
+          <stop offset="1" stopColor="#d8c9a7" />
+        </linearGradient>
+        <linearGradient id="r-red" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#a8322b" />
+          <stop offset="1" stopColor="#6e1a17" />
+        </linearGradient>
         {/* gilt */}
         <linearGradient id="g-face" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#fff0c0" />
@@ -109,67 +173,75 @@ export function ArtDefs() {
 
 const Contact = ({ cx, cy, rx, ry = 2.6 }) => <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="#000" opacity=".42" filter="url(#a-soft)" />
 
-/** Sliced tin loaf, side view: straight sides, a gently rounded crown, slice lines. */
+/** Baked tin loaf: golden crust, a pale split along the crown, a lighter bake on the sides. */
 const Bread = () => (
   <svg viewBox="0 0 100 56" aria-hidden="true">
     <Contact cx={50} cy={53} rx={43} />
-    <path d="M9 24h82v25c0 2.5-2 4-4.5 4h-73C11 53 9 51.5 9 49Z" fill="url(#p-round)" />
-    <path d="M7 25c0-11 19-18 43-18s43 7 43 18c0 2-1.6 3-3.4 3H10.4C8.6 28 7 27 7 25Z" fill="url(#p-dome)" />
-    <path d="M9.5 28.5h81" stroke="#4d5462" strokeWidth="2.4" opacity=".28" filter="url(#a-soft)" />
-    {[22, 33, 44, 55, 66, 77].map((x) => (
-      <g key={x}>
-        <path d={`M${x} ${x < 30 || x > 70 ? 13 : 9.5}v42`} stroke="#8e8b84" strokeWidth=".9" opacity=".45" />
-        <path d={`M${x + 0.9} ${x < 30 || x > 70 ? 13 : 9.5}v42`} stroke="#fffaf0" strokeWidth=".6" opacity=".5" />
-      </g>
-    ))}
-    <ellipse cx="34" cy="13" rx="15" ry="2.6" fill="url(#p-spec)" opacity=".7" />
+    <path d="M10 25h80v24c0 2.6-2 4-4.5 4h-71C12 53 10 51.6 10 49Z" fill="url(#r-crust-side)" />
+    <path d="M10 46c20 3 60 3 80 0v3c0 2.6-2 4-4.5 4h-71C12 53 10 51.6 10 49Z" fill="#5a3418" opacity=".55" />
+    <path d="M7 26C7 13 26 6 50 6s43 7 43 20c0 2-1.6 3.2-3.4 3.2H10.4C8.6 29.2 7 28 7 26Z" fill="url(#r-crust-top)" />
+    <path d="M7 26C7 13 26 6 50 6s43 7 43 20c0 2-1.6 3.2-3.4 3.2H10.4C8.6 29.2 7 28 7 26Z" fill="url(#r-crust-hi)" />
+    <path d="M24 22q4 -3 8 -8" fill="none" stroke="#f1d29c" strokeWidth="2.2" strokeLinecap="round" opacity=".9" />
+    <path d="M24 23.4q4 -3 8 -8" fill="none" stroke="#6b3a15" strokeWidth="1" strokeLinecap="round" opacity=".5" />
+    <path d="M40 19q4 -3 8 -8" fill="none" stroke="#f1d29c" strokeWidth="2.2" strokeLinecap="round" opacity=".9" />
+    <path d="M40 20.4q4 -3 8 -8" fill="none" stroke="#6b3a15" strokeWidth="1" strokeLinecap="round" opacity=".5" />
+    <path d="M56 19q4 -3 8 -8" fill="none" stroke="#f1d29c" strokeWidth="2.2" strokeLinecap="round" opacity=".9" />
+    <path d="M56 20.4q4 -3 8 -8" fill="none" stroke="#6b3a15" strokeWidth="1" strokeLinecap="round" opacity=".5" />
+    <path d="M72 22q4 -3 8 -8" fill="none" stroke="#f1d29c" strokeWidth="2.2" strokeLinecap="round" opacity=".9" />
+    <path d="M72 23.4q4 -3 8 -8" fill="none" stroke="#6b3a15" strokeWidth="1" strokeLinecap="round" opacity=".5" />
+    <path d="M10.5 29.5h79" stroke="#3d2210" strokeWidth="2" opacity=".35" filter="url(#a-soft)" />
+    <circle cx="30" cy="22" r=".7" fill="#f8e6c4" opacity=".7" />
+    <circle cx="62" cy="20" r=".6" fill="#f8e6c4" opacity=".6" />
+    <circle cx="74" cy="23" r=".5" fill="#f8e6c4" opacity=".6" />
   </svg>
 )
 
-/** Glass-shaped dairy bottle in porcelain with a gilt cap. */
+/** Clear glass milk bottle with a foil cap. */
 const Milk = () => (
   <svg viewBox="0 0 54 100" aria-hidden="true">
     <Contact cx={27} cy={97} rx={20} />
-    <path d="M20 10v12c0 8-12 12-12 24v44c0 5 4 7 9 7h20c5 0 9-2 9-7V46c0-12-12-16-12-24V10Z" fill="url(#p-round)" />
-    <path d="M8 64h38M8 67h38" stroke="#6b6e76" strokeWidth=".8" opacity=".35" />
-    <rect x="18" y="3" width="18" height="8" rx="2" fill="url(#g-round)" />
-    <rect x="18" y="9.2" width="18" height="1.6" fill="#5e400e" opacity=".55" />
-    <rect x="12.5" y="44" width="4" height="46" rx="2" fill="url(#p-spec)" opacity=".8" />
-    <ellipse cx="17" cy="38" rx="5" ry="3" fill="url(#p-spec)" opacity=".6" />
+    <path d="M21 16v7c0 7-11 11-11 22v44c0 4.2 3 6.5 7.6 6.5h18.8c4.6 0 7.6-2.3 7.6-6.5V45c0-11-11-15-11-22v-7Z" fill="url(#r-milk)" />
+    <path d="M20 10v12c0 8-12 12-12 24v44c0 5 4 7 9 7h20c5 0 9-2 9-7V46c0-12-12-16-12-24V10Z" fill="url(#r-glass)" stroke="#dfe9f0" strokeOpacity=".45" strokeWidth=".8" />
+    <rect x="18.5" y="4" width="17" height="7.5" rx="2" fill="url(#r-foil)" />
+    <path d="M18.5 9.8h17" stroke="#152742" strokeWidth=".9" opacity=".6" />
+    <rect x="12" y="46" width="3.4" height="44" rx="1.7" fill="#fff" opacity=".55" />
+    <rect x="39" y="50" width="1.6" height="36" rx=".8" fill="#fff" opacity=".25" />
+    <path d="M10.5 60h33" stroke="#c9cdd4" strokeWidth=".7" opacity=".5" />
   </svg>
 )
 
-/** Jerrycan with an embossed cross, gilt spout cap. */
+/** Red enamelled steel fuel can with a pressed cross and a steel cap. */
 const Fuel = () => (
   <svg viewBox="0 0 80 92" aria-hidden="true">
     <Contact cx={41} cy={89} rx={35} />
-    <polygon points="62,18 72,13 72,84 62,89" fill="url(#p-side)" />
-    <polygon points="10,18 20,13 72,13 62,18" fill="url(#p-top)" />
-    <rect x="10" y="18" width="52" height="71" rx="3" fill="url(#p-face)" />
-    {/* embossed X: a shadow line and a highlight line */}
-    <path d="M17 26l38 54M55 26L17 80" stroke="#7c7c80" strokeWidth="2.4" opacity=".4" />
-    <path d="M17 27.6l38 54M55 27.6L17 81.6" stroke="#fffaf0" strokeWidth="1.2" opacity=".55" />
-    <rect x="14" y="22" width="44" height="63" rx="2" fill="none" stroke="#9c978d" strokeWidth=".9" opacity=".5" />
-    <path d="M16 13V6a3 3 0 0 1 3-3h24a3 3 0 0 1 3 3v7" fill="none" stroke="url(#p-face)" strokeWidth="5" />
-    <rect x="21" y="6" width="7" height="5" rx="1.5" fill="#4f5665" opacity=".55" />
-    <rect x="33" y="6" width="7" height="5" rx="1.5" fill="#4f5665" opacity=".55" />
-    <rect x="52" y="4" width="10" height="8" rx="1.6" fill="url(#g-round)" />
-    <rect x="12" y="21" width="3" height="64" rx="1.5" fill="url(#p-spec)" opacity=".8" />
+    <polygon points="62,18 72,13 72,84 62,89" fill="url(#r-can-side)" />
+    <polygon points="10,18 20,13 72,13 62,18" fill="url(#r-can-top)" />
+    <rect x="10" y="18" width="52" height="71" rx="3" fill="url(#r-can)" />
+    <path d="M17 26l38 54M55 26L17 80" stroke="#3d0b06" strokeWidth="2.6" opacity=".5" />
+    <path d="M17 27.6l38 54M55 27.6L17 81.6" stroke="#e4775a" strokeWidth="1.1" opacity=".55" />
+    <rect x="14" y="22" width="44" height="63" rx="2" fill="none" stroke="#e06a4c" strokeWidth=".7" opacity=".35" />
+    <path d="M16 13V6a3 3 0 0 1 3-3h24a3 3 0 0 1 3 3v7" fill="none" stroke="url(#r-can-top)" strokeWidth="5" />
+    <rect x="21" y="6" width="7" height="5" rx="1.5" fill="#1c0603" opacity=".85" />
+    <rect x="33" y="6" width="7" height="5" rx="1.5" fill="#1c0603" opacity=".85" />
+    <rect x="51" y="3.5" width="11" height="8.5" rx="1.6" fill="url(#r-steel)" />
+    <rect x="13" y="21" width="2.6" height="64" rx="1.3" fill="#ffd2c2" opacity=".3" />
   </svg>
 )
 
-/** Ticket stub: notched card, gilt edging, perforation. No lettering. */
+/** Cinema ticket: ivory card, red band, gold foil frame, perforated stub. */
 const Ticket = () => (
   <svg viewBox="0 0 100 46" aria-hidden="true">
     <Contact cx={50} cy={43} rx={44} ry={2.2} />
-    <path d="M4 5h92v12a6 6 0 0 0 0 12v12H4V29a6 6 0 0 0 0-12Z" fill="url(#p-face)" />
-    <path d="M4 5h92v3H4Z" fill="#fffaf0" opacity=".6" />
-    <rect x="11" y="11" width="56" height="24" rx="1.5" fill="none" stroke="url(#g-face)" strokeWidth="1.1" />
-    <path d="M39 18l5 5-5 5-5-5Z" fill="none" stroke="url(#g-face)" strokeWidth="1" />
+    <path d="M4 5h92v12a6 6 0 0 0 0 12v12H4V29a6 6 0 0 0 0-12Z" fill="url(#r-card)" />
+    <rect x="4" y="5" width="70" height="7" fill="url(#r-red)" />
+    <rect x="4" y="34" width="70" height="7" fill="url(#r-red)" />
+    <text x="39" y="26" textAnchor="middle" fontFamily="Fraunces Variable, Georgia, serif" fontSize="8.2" fontWeight="500" letterSpacing="2.2" fill="#6e1a17">CINEMA</text>
+    <rect x="12" y="15" width="54" height="16" rx="1" fill="none" stroke="url(#g-face)" strokeWidth=".9" />
     {Array.from({ length: 8 }, (_, i) => (
-      <circle key={i} cx="75" cy={8.5 + i * 4.2} r=".95" fill="#6f7179" opacity=".7" />
+      <circle key={i} cx="75" cy={8.5 + i * 4.2} r=".95" fill="#8a7a5c" opacity=".8" />
     ))}
-    <rect x="80" y="17" width="9" height="12" rx="1" fill="none" stroke="url(#g-face)" strokeWidth=".9" opacity=".8" />
+    <text x="86" y="25.5" textAnchor="middle" fontFamily="Fraunces Variable, Georgia, serif" fontSize="7" fill="#6e1a17" opacity=".85">No.</text>
+    <path d="M4 5h92v2.2H4Z" fill="#fff" opacity=".35" />
   </svg>
 )
 
