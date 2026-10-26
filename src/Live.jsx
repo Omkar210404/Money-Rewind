@@ -87,46 +87,26 @@ function num(v, digits) {
 }
 
 export function Ticker({ live, fresh, country }) {
-  if (!live) {
-    return (
-      <div className="ticker" aria-live="polite">
-        <div className="ticker-row">
-          <span className="tick meta">Live rates unavailable right now. Everything else works without them.</span>
-        </div>
-      </div>
-    )
-  }
+  if (!live) return null
   const cur = country?.currency
   const r = live.rates || {}
   const items = []
-  if (cur && r[cur]) {
-    for (const p of ['USD', 'EUR', 'GBP', 'JPY', 'CNY', 'INR'].filter((c) => c !== cur && r[c]).slice(0, 3)) {
-      items.push([`${p}/${cur}`, num(r[cur] / r[p])])
-    }
-  }
+  const base = cur === 'USD' ? 'EUR' : 'USD'
+  if (cur && r[cur] && r[base]) items.push([`${base}/${cur}`, num(r[cur] / r[base])])
   if (live.gold) {
-    items.push(['Gold', `$${num(live.gold, 0)} oz`])
-    if (cur && r[cur] && cur !== 'USD') items.push([`Gold ${cur}`, `${country.symbol.trim()}${num((live.gold / TROY_OZ_G) * r[cur])} g`])
+    if (cur && r[cur]) items.push(['Gold', `${country.symbol.trim()}${num((live.gold / TROY_OZ_G) * r[cur])}/g`])
+    else items.push(['Gold', `$${num(live.gold, 0)}/oz`])
   }
-  if (live.silver) items.push(['Silver', `$${num(live.silver, 2)} oz`])
-
+  if (live.silver) items.push(['Silver', `$${num(live.silver, 2)}/oz`])
+  const when = time(Math.max(live.ratesTime || 0, live.goldTime || 0))
   return (
-    <div className={`ticker${fresh ? '' : ' stale'}`} aria-label="Today's exchange rates and metal prices">
-      <div className="ticker-row">
-        <span className="tick label">Today</span>
-        {items.map(([k, v]) => (
-          <span key={k} className="tick">
-            <i>{k}</i>
-            <b>{v}</b>
-          </span>
-        ))}
-        <span className="tick-spacer" />
-        <span className="tick meta">
-          {fresh ? 'Updated' : 'Saved'} {time(Math.max(live.ratesTime || 0, live.goldTime || 0))} ·{' '}
-          <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">ExchangeRate-API</a> ·{' '}
-          <a href="https://gold-api.com" target="_blank" rel="noreferrer">gold-api.com</a>
+    <div className={`ticker${fresh ? '' : ' stale'}`} title={`${fresh ? 'Updated' : 'Saved'} ${when}. Rates by ExchangeRate-API, metals by gold-api.com`}>
+      {items.map(([k, v]) => (
+        <span key={k} className="tick">
+          <i>{k}</i>
+          <b>{v}</b>
         </span>
-      </div>
+      ))}
     </div>
   )
 }

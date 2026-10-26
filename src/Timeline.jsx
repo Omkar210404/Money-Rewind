@@ -88,7 +88,7 @@ export default function Timeline({ min, max, value, onChange, ghostYear, nowYear
           </div>
           {ghostYear != null && ghostYear >= min && ghostYear <= max && (
             <div className="tl-ghost" style={{ left: `${pos(ghostYear)}%` }} title={`Comparison year ${ghostYear}`}>
-              <span>{ghostYear}</span>
+              {Math.abs(ghostYear - value) > 3 && <span>{ghostYear}</span>}
             </div>
           )}
           <div

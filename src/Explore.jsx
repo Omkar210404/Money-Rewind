@@ -117,7 +117,7 @@ export default function Explore({ data, images, reduced, state, set, overrides }
       <section className="hero" ref={hero}>
         <div className="spotlight" aria-hidden="true" />
 
-        <div className="hero-copy">
+        <header className="hero-head">
           <p className="eyebrow">
             Purchasing power <span className="sep" /> {country.name}
           </p>
@@ -150,22 +150,46 @@ export default function Explore({ data, images, reduced, state, set, overrides }
               </m.span>
             </AnimatePresence>
           </p>
-          {isHours && main.money != null && <p className="subcap">An hour of average income in {year}: {fmtMoney(country, main.money / hours)}</p>}
+          {isHours && main.money != null && (
+            <p className="subcap">One hour of average income in {year} ≈ {fmtMoney(country, main.money / hours)} (GDP per capita ÷ 2,080 h, a proxy, not a wage)</p>
+          )}
           {!hasAny && <p className="subcap warn">No price data for {country.name} in {year}.</p>}
-        </div>
-
-        <div className="hero-placard">
-          <Placard data={data} country={country} year={year} view={main} ghostView={ghost} ghostYear={ghostYear}
-            images={images} mode={mode} overrides={overrides} setOverride={set.override} />
-          {note && <p className="currency-note">{note}</p>}
-        </div>
+          <aside className={`dock glass${sheet ? ' open' : ''}`} aria-label="Controls">
+            <button className="sheet-handle" onClick={() => setSheet((s) => !s)} aria-expanded={sheet}>
+              <span className="grabber" /> {sheet ? 'Done' : 'Adjust'}
+            </button>
+            <div className="dock-body">
+              <ModeTabs active={mode} go={set.mode} />
+              <span className="dock-div" aria-hidden="true" />
+              <div className="dock-field wide">
+                <label htmlFor="country">Country</label>
+                <CountrySelect id="country" data={data} value={country.iso3} onChange={set.iso} />
+              </div>
+              <div className="dock-field">
+                <label htmlFor="amount">{isHours ? 'Hours' : country.currency}</label>
+                <NumberInput id="amount" value={isHours ? hours : amount} max={isHours ? 9999 : undefined} onChange={isHours ? set.hours : set.amount} />
+              </div>
+              <div className="dock-field">
+                <label htmlFor="ghost">Versus</label>
+                <select id="ghost" value={ghostYear} onChange={(e) => set.ghostYear(Number(e.target.value))}>
+                  {Array.from({ length: maxY - minY + 1 }, (_, i) => maxY - i).map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              <span className="dock-div" aria-hidden="true" />
+              <button className="dock-born" onClick={() => setBirthOpen(true)}>
+                <Icon.Cake /> Born in…
+              </button>
+            </div>
+          </aside>
+        </header>
 
         <div className="stage">
           <div className="ghost-wrap">
             <div className="annotation">
               <span className="anno-year">{ghostYear}</span>
               <span className="anno-text">{isHours ? `the same ${hours === 1 ? 'hour' : 'hours'}` : `the same ${sym}${amountText}`}</span>
-              <span className="anno-line" aria-hidden="true" />
             </div>
             <Pile counts={ghost.counts} items={data.items} images={images} ghost reduced={reduced} label={pileLabel(ghostYear, ghost.counts)} />
           </div>
@@ -174,39 +198,13 @@ export default function Explore({ data, images, reduced, state, set, overrides }
           </div>
         </div>
 
-        <aside className={`panel glass${sheet ? ' open' : ''}`} aria-label="Controls">
-          <button className="sheet-handle" onClick={() => setSheet((s) => !s)} aria-expanded={sheet}>
-            <span className="grabber" /> {sheet ? 'Done' : 'Adjust'}
-          </button>
-          <div className="panel-body">
-            <ModeTabs active={mode} go={set.mode} />
-            <div className="field">
-              <label htmlFor="country">Country</label>
-              <CountrySelect id="country" data={data} value={country.iso3} onChange={set.iso} />
-            </div>
-            <div className="field-row">
-              <div className="field">
-                <label htmlFor="amount">{isHours ? 'Hours of work' : `Amount (${country.currency})`}</label>
-                <NumberInput id="amount" value={isHours ? hours : amount} max={isHours ? 9999 : undefined} onChange={isHours ? set.hours : set.amount} />
-              </div>
-              <div className="field">
-                <label htmlFor="ghost">Compare with</label>
-                <select id="ghost" value={ghostYear} onChange={(e) => set.ghostYear(Number(e.target.value))}>
-                  {Array.from({ length: maxY - minY + 1 }, (_, i) => maxY - i).map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {isHours && <p className="panel-note">One hour = GDP per capita ÷ 2,080 hours (40 h × 52 weeks). A proxy, not a wage.</p>}
-            <button className="link-btn" onClick={() => setBirthOpen(true)}>
-              <Icon.Cake />
-              <span>The year you were born<small>Then vs now, with a share card</small></span>
-              <Icon.Arrow className="go" />
-            </button>
-          </div>
-        </aside>
+        <div className="hero-cards">
+          <Placard data={data} country={country} year={year} view={main} ghostView={ghost} ghostYear={ghostYear}
+            images={images} mode={mode} overrides={overrides} setOverride={set.override} />
+          {note && <p className="currency-note">{note}</p>}
+        </div>
       </section>
+
 
       <Wages data={data} country={country} start={ghostYear} year={year} images={images} />
 
@@ -229,68 +227,66 @@ export default function Explore({ data, images, reduced, state, set, overrides }
 const TAG = { observed: 'Measured', reference: 'Published', derived: 'Market', estimated: 'Estimate', yours: 'Yours' }
 const SHORT_NAME = { bread: 'White bread', milk: 'Milk', fuel: 'Petrol', ticket: 'Cinema ticket', gold: 'Gold' }
 
-/** The museum placard: one row per item with count, comparison, price and source tag. */
-export function Placard({ data, country, year, view, ghostView, ghostYear, images, mode, overrides, setOverride, title }) {
+/** A row of glass plaques: one per item with count, price, comparison and source tag. */
+export function Placard({ data, country, year, view, ghostView, ghostYear, images, mode, overrides, setOverride }) {
   const [editing, setEditing] = useState(null)
   const hourly = hourlyAt(data, country, year)
   return (
-    <div className="placard">
-      <div className="pl-head">
-        <span>{title ?? `In ${year}`}</span>
-        {ghostView && <span className="pl-head-ghost">{ghostYear}</span>}
-      </div>
-      <ul>
-        {data.items.map((it) => {
-          const p = view.prices[it.id]
-          const c = view.counts[it.id]
-          const g = ghostView?.counts[it.id]
-          const mine = overrides?.[country.iso3]?.[it.id]
-          const src = p && data.sources?.[p.source]?.name
-          const price = p
-            ? mode === 'hours'
-              ? `${fmtHours(hourly ? p.value / hourly : null)} of work each`
-              : `${fmtMoney(country, p.value)} each`
-            : 'No source yet'
-          return (
-            <li key={it.id} className={p ? '' : 'missing'}>
-              <span className="pl-art"><ItemArt id={it.id} images={images} /></span>
-              <span className="pl-num">{c == null ? '—' : fmtCount(c)}</span>
-              <span className="pl-text">
-                <span className="pl-name">{c == null ? SHORT_NAME[it.id] : itemNoun(it, c)}</span>
-                <span className="pl-meta">{price}</span>
-              </span>
-              {ghostView && <span className="pl-ghost">{g == null ? '—' : fmtCount(g)}</span>}
+    <div className="cards">
+      {data.items.map((it) => {
+        const p = view.prices[it.id]
+        const c = view.counts[it.id]
+        const g = ghostView?.counts[it.id]
+        const mine = overrides?.[country.iso3]?.[it.id]
+        const src = p && data.sources?.[p.source]?.name
+        const price = p
+          ? mode === 'hours'
+            ? `${fmtHours(hourly ? p.value / hourly : null)} of work each`
+            : `${fmtMoney(country, p.value)} each`
+          : 'No source yet'
+        return (
+          <article key={it.id} className={`card${p ? '' : ' missing'}${editing === it.id ? ' editing' : ''}`}>
+            <div className="card-top">
+              <span className="card-art"><ItemArt id={it.id} images={images} /></span>
               <span className={`pl-tag t-${p?.kind ?? 'none'}`} title={p ? `${kindLabel(p)}${src ? ` · ${src}` : ''}` : 'No source for this item and country'}>
                 {p ? TAG[p.kind] : 'No data'}
               </span>
-              {setOverride && editing !== it.id && (
-                <button className={`pl-edit${mine ? ' on' : ''}`} onClick={() => setEditing(it.id)}
-                  aria-label={`Use your own price for ${it.name}`} title={mine ? 'Edit your price' : 'Use your own local price'}>
-                  <Icon.Pencil size={14} />
-                </button>
-              )}
-              {editing === it.id && (
-                <PriceForm
-                  item={it}
-                  country={country}
-                  year={year}
-                  initial={mine?.year === year ? mine.value : p?.value}
-                  hasOwn={!!mine}
-                  onSave={(v) => {
-                    setOverride(country.iso3, it.id, { year, value: v })
-                    setEditing(null)
-                  }}
-                  onRemove={() => {
-                    setOverride(country.iso3, it.id, null)
-                    setEditing(null)
-                  }}
-                  onCancel={() => setEditing(null)}
-                />
-              )}
-            </li>
-          )
-        })}
-      </ul>
+            </div>
+            <div className="card-num">{c == null ? '—' : fmtCount(c)}</div>
+            <div className="card-name">{c == null ? SHORT_NAME[it.id] : itemNoun(it, c)}</div>
+            <div className="card-meta">{price}</div>
+            {ghostView && (
+              <div className="card-ghost">
+                <span>{ghostYear}</span> {g == null ? '—' : fmtCount(g)}
+              </div>
+            )}
+            {setOverride && editing !== it.id && (
+              <button className={`pl-edit${mine ? ' on' : ''}`} onClick={() => setEditing(it.id)}
+                aria-label={`Use your own price for ${it.name}`} title={mine ? 'Edit your price' : 'Use your own local price'}>
+                <Icon.Pencil size={13} />
+              </button>
+            )}
+            {editing === it.id && (
+              <PriceForm
+                item={it}
+                country={country}
+                year={year}
+                initial={mine?.year === year ? mine.value : p?.value}
+                hasOwn={!!mine}
+                onSave={(v) => {
+                  setOverride(country.iso3, it.id, { year, value: v })
+                  setEditing(null)
+                }}
+                onRemove={() => {
+                  setOverride(country.iso3, it.id, null)
+                  setEditing(null)
+                }}
+                onCancel={() => setEditing(null)}
+              />
+            )}
+          </article>
+        )
+      })}
     </div>
   )
 }

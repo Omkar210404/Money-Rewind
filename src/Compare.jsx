@@ -48,7 +48,7 @@ export default function Compare({ data, images, reduced, state, set }) {
       </div>
       <Pile counts={v.counts} items={data.items} images={images} reduced={reduced}
         label={`${c.name} in ${year}: ` + data.items.map((it) => `${v.counts[it.id] == null ? 'no data' : fmtCount(v.counts[it.id])} ${it.plural}`).join(', ')} />
-      <Placard data={data} country={c} year={year} view={v} images={images} mode={mode} title={`${c.name} · ${year}`} />
+      <Placard data={data} country={c} year={year} view={v} images={images} mode={mode} />
     </div>
   )
 
