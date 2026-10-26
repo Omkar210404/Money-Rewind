@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef } from 'react'
 import { AnimatePresence, m } from 'framer-motion'
 import { ItemArt, Pedestal } from './Art.jsx'
 import { emitDust } from './Particles.jsx'
-import { fmtCount } from './data.js'
 
 // Design space matches the pedestal SVG: 560 x 400, top surface centred at y=190.
 const W = 560
@@ -26,12 +25,12 @@ function hash(s) {
 function place(g, i, n, id) {
   const j = hash(id + i) - 0.5
   if (g.style === 'stack') {
-    return { x: g.x - g.w / 2 + j * 10, y: g.base - g.h - i * 5, rot: j * 14, z: i }
+    return { x: g.x - g.w / 2 + j * 10, y: g.base - g.h - i * 5, rot: j * 8, z: i }
   }
   if (g.style === 'columns') {
     const col = i % g.cols
     const lvl = Math.floor(i / g.cols)
-    return { x: g.x - g.w / 2 + (col - (g.cols - 1) / 2) * g.w * 0.92 + j * 2, y: g.base - g.h - lvl * 6.5, rot: j * 3, z: lvl * 2 + col }
+    return { x: g.x - g.w / 2 + (col - (g.cols - 1) / 2) * g.w * 0.92 + j * 2, y: g.base - g.h - lvl * 6.5, rot: j * 1.2, z: lvl * 2 + col }
   }
   if (g.style === 'rows') {
     const row = Math.floor(i / g.bottom)
@@ -40,7 +39,7 @@ function place(g, i, n, id) {
     return {
       x: g.x - g.w / 2 + (col - (inRow - 1) / 2) * g.w * 1.04 + row * g.w * 0.5,
       y: g.base - g.h - row * 9,
-      rot: j * 3,
+      rot: j * 1.5,
       z: -row * 10 + col,
     }
   }
@@ -58,7 +57,7 @@ function place(g, i, n, id) {
   return {
     x: g.x - g.w / 2 + (col - (inRow - 1) / 2) * g.w * 0.94 + j * 3,
     y: g.base - g.h - row * g.h * 0.7,
-    rot: j * 7,
+    rot: j * 3,
     z: row * 10 + col,
   }
 }
@@ -112,15 +111,6 @@ export default function Pile({ counts, items, images, ghost = false, reduced = f
     prev.current = now
   }, [objects, ghost, reduced])
 
-  const chips = items.map((it) => {
-    const g = GROUPS[it.id]
-    const c = counts[it.id]
-    const n = c == null ? 0 : Math.min(g.cap, Math.ceil(c))
-    const tops = objects.filter((o) => o.id === it.id).map((o) => o.y)
-    const top = tops.length ? Math.min(...tops) : g.base - 20
-    return { it, g, c, top, capped: c != null && c > g.cap, n }
-  })
-
   return (
     <div className={`pile${ghost ? ' ghost' : ''}`} style={{ aspectRatio: `${W} / ${H}` }} role="img" aria-label={label}>
       <Pedestal ghost={ghost} />
@@ -141,26 +131,16 @@ export default function Pile({ counts, items, images, ghost = false, reduced = f
               // a partial object is cut to its fraction (never thinner than a visible sliver)
               clipPath: o.frac < 0.999 ? `inset(0 ${((1 - Math.max(o.frac, 0.12)) * 100).toFixed(1)}% 0 0)` : undefined,
             }}
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: -90 - o.i * 6, rotate: o.rot - 10 }}
+            initial={reduced ? { opacity: 0 } : { opacity: 0, y: -70 - o.i * 4, rotate: o.rot - 4 }}
             animate={{ opacity: 1, y: 0, rotate: o.rot }}
-            exit={reduced ? { opacity: 0, transition: { duration: 0.15 } } : { opacity: 0, scale: 0.86, y: -4, transition: { duration: 0.45, ease: 'easeOut' } }}
-            transition={reduced ? { duration: 0.15 } : { type: 'spring', stiffness: 320, damping: 22, mass: 0.7, delay: Math.min(o.i * 0.025, 0.2) }}
+            exit={reduced ? { opacity: 0, transition: { duration: 0.15 } } : { opacity: 0, scale: 0.94, y: -6, filter: 'blur(2px)', transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] } }}
+            transition={reduced ? { duration: 0.15 } : { type: 'spring', stiffness: 260, damping: 26, mass: 0.8, delay: Math.min(o.i * 0.03, 0.24) }}
             onClick={onSelect ? () => onSelect(o.id) : undefined}
           >
             <ItemArt id={o.id} images={images} />
           </m.div>
         ))}
       </AnimatePresence>
-      {chips.map(({ it, g, c, top, capped }) => (
-        <div
-          key={it.id}
-          className={`chip${c == null ? ' nodata' : ''}${capped ? ' capped' : ''}`}
-          style={{ left: pct(g.x, W), top: pct(top - 6, H), zIndex: 900 }}
-          title={c == null ? `${it.name}: no data` : `${fmtCount(c)} ${it.plural}`}
-        >
-          {c == null ? 'no data' : `${capped ? '×' : ''}${fmtCount(c)}`}
-        </div>
-      ))}
     </div>
   )
 }

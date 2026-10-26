@@ -4,6 +4,7 @@ import Pile from './Pile.jsx'
 import Timeline from './Timeline.jsx'
 import IncomeChart from './IncomeChart.jsx'
 import { ItemArt } from './Art.jsx'
+import * as Icon from './Icons.jsx'
 import { setDustStream } from './Particles.jsx'
 import { downloadBlob, drawShareCard } from './share.js'
 import {
@@ -25,15 +26,15 @@ export function useCounts(data, country, budget, year) {
   }, [data, country, budget, year])
 }
 
-export function ModeSeg({ active, go }) {
+export function ModeTabs({ active, go }) {
   return (
-    <div className="seg" role="group" aria-label="View">
+    <div className="tabs" role="tablist" aria-label="View">
       {[
         ['prices', 'Prices'],
         ['hours', 'Hours of work'],
-        ['compare', 'Compare countries'],
+        ['compare', 'Compare'],
       ].map(([id, label]) => (
-        <button key={id} className={active === id ? 'on' : ''} aria-pressed={active === id} onClick={() => go(id)}>
+        <button key={id} role="tab" aria-selected={active === id} className={active === id ? 'on' : ''} onClick={() => go(id)}>
           {label}
         </button>
       ))}
@@ -55,6 +56,19 @@ export function NumberInput({ value, onChange, max = 999999999, ...rest }) {
   )
 }
 
+export function CountrySelect({ data, value, onChange, ...rest }) {
+  const sorted = [...data.countries].sort((a, b) => a.name.localeCompare(b.name))
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} {...rest}>
+      {sorted.map((c) => (
+        <option key={c.iso3} value={c.iso3}>
+          {c.name} · {c.currency}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 export default function Explore({ data, images, reduced, state, set, overrides }) {
   const { iso, amount, hours, year, ghostYear, mode } = state
   const country = data.countries.find((c) => c.iso3 === iso) ?? data.countries[0]
@@ -72,14 +86,14 @@ export default function Explore({ data, images, reduced, state, set, overrides }
   const pileWrap = useRef(null)
   const hero = useRef(null)
 
-  // a faint stream of dust from the right edge of the main pile, only while the hero is on screen
+  // a faint drift of dust off the main pile, only while the hero is on screen
   useEffect(() => {
     if (reduced) return
     const src = () => {
       const el = pileWrap.current
       if (!el) return null
       const r = el.getBoundingClientRect()
-      return new DOMRect(r.left + r.width * 0.66, r.top + r.height * 0.3, r.width * 0.12, r.height * 0.18)
+      return new DOMRect(r.left + r.width * 0.64, r.top + r.height * 0.3, r.width * 0.1, r.height * 0.16)
     }
     const io = new IntersectionObserver(([e]) => setDustStream(e.isIntersecting ? src : null))
     io.observe(hero.current)
@@ -92,7 +106,8 @@ export default function Explore({ data, images, reduced, state, set, overrides }
   const hasAny = Object.values(main.counts).some((c) => c != null)
   const note = country.currencyNote && (year < country.currencyNote.before || ghostYear < country.currencyNote.before) ? country.currencyNote.text : null
   const amountText = amount.toLocaleString('en')
-  const what = isHours ? `${hours} hour${hours === 1 ? '' : 's'} of average work` : `${country.symbol}${amountText}`
+  const sym = country.symbol.trim()
+  const what = isHours ? `${hours} hour${hours === 1 ? '' : 's'} of average work` : `${sym}${amountText}`
   const pileLabel = (yr, counts) =>
     `${what} in ${yr} buys: ` +
     data.items.map((it) => (counts[it.id] == null ? `${it.name}: no data` : `${fmtCount(counts[it.id])} ${it.plural}`)).join(', ')
@@ -101,9 +116,13 @@ export default function Explore({ data, images, reduced, state, set, overrides }
     <>
       <section className="hero" ref={hero}>
         <div className="spotlight" aria-hidden="true" />
+
         <div className="hero-copy">
+          <p className="eyebrow">
+            Purchasing power <span className="sep" /> {country.name}
+          </p>
           <label className="big-number">
-            {!isHours && <span className="sym">{country.symbol.trim()}</span>}
+            {!isHours && <span className="sym">{sym}</span>}
             {/* the hidden copy of the text sizes the input to exactly its content */}
             <span className="autosize" data-value={(isHours ? hours : amount).toLocaleString('en')}>
               <NumberInput
@@ -122,27 +141,30 @@ export default function Explore({ data, images, reduced, state, set, overrides }
               <m.span
                 key={year}
                 className="caption-year"
-                initial={reduced ? false : { opacity: 0, y: 10 }}
+                initial={reduced ? false : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
+                exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.18 }}
               >
                 {year}
               </m.span>
             </AnimatePresence>
           </p>
-          <p className="sublabel">
-            {country.name} · {country.currency}
-            {isHours && main.money != null && <span>· an hour ≈ {fmtMoney(country, main.money / hours)}</span>}
-            {!hasAny && <span className="nodata-pill">no data for {year}</span>}
-          </p>
+          {isHours && main.money != null && <p className="subcap">An hour of average income in {year}: {fmtMoney(country, main.money / hours)}</p>}
+          {!hasAny && <p className="subcap warn">No price data for {country.name} in {year}.</p>}
+        </div>
+
+        <div className="hero-placard">
+          <Placard data={data} country={country} year={year} view={main} ghostView={ghost} ghostYear={ghostYear}
+            images={images} mode={mode} overrides={overrides} setOverride={set.override} />
+          {note && <p className="currency-note">{note}</p>}
         </div>
 
         <div className="stage">
           <div className="ghost-wrap">
             <div className="annotation">
               <span className="anno-year">{ghostYear}</span>
-              <span className="anno-text">{isHours ? `the same ${hours === 1 ? 'hour' : 'hours'} bought` : `the same ${country.symbol.trim()}${amountText} bought`}</span>
+              <span className="anno-text">{isHours ? `the same ${hours === 1 ? 'hour' : 'hours'}` : `the same ${sym}${amountText}`}</span>
               <span className="anno-line" aria-hidden="true" />
             </div>
             <Pile counts={ghost.counts} items={data.items} images={images} ghost reduced={reduced} label={pileLabel(ghostYear, ghost.counts)} />
@@ -154,17 +176,17 @@ export default function Explore({ data, images, reduced, state, set, overrides }
 
         <aside className={`panel glass${sheet ? ' open' : ''}`} aria-label="Controls">
           <button className="sheet-handle" onClick={() => setSheet((s) => !s)} aria-expanded={sheet}>
-            <span /> {sheet ? 'Close' : 'Controls & details'}
+            <span className="grabber" /> {sheet ? 'Done' : 'Adjust'}
           </button>
           <div className="panel-body">
-            <ModeSeg active={mode} go={set.mode} />
+            <ModeTabs active={mode} go={set.mode} />
             <div className="field">
               <label htmlFor="country">Country</label>
               <CountrySelect id="country" data={data} value={country.iso3} onChange={set.iso} />
             </div>
             <div className="field-row">
               <div className="field">
-                <label htmlFor="amount">{isHours ? 'Hours of work' : 'Amount'}</label>
+                <label htmlFor="amount">{isHours ? 'Hours of work' : `Amount (${country.currency})`}</label>
                 <NumberInput id="amount" value={isHours ? hours : amount} max={isHours ? 9999 : undefined} onChange={isHours ? set.hours : set.amount} />
               </div>
               <div className="field">
@@ -176,20 +198,14 @@ export default function Explore({ data, images, reduced, state, set, overrides }
                 </select>
               </div>
             </div>
-            {isHours && (
-              <p className="fine panel-note">
-                An hour of average work = GDP per capita ÷ 2,080 hours (40 hours × 52 weeks). A rough proxy, not a wage.
-              </p>
-            )}
-            <button className="btn-ghost" onClick={() => setBirthOpen(true)}>
-              ✦ Born in…? See then vs now
+            {isHours && <p className="panel-note">One hour = GDP per capita ÷ 2,080 hours (40 h × 52 weeks). A proxy, not a wage.</p>}
+            <button className="link-btn" onClick={() => setBirthOpen(true)}>
+              <Icon.Cake />
+              <span>The year you were born<small>Then vs now, with a share card</small></span>
+              <Icon.Arrow className="go" />
             </button>
-            <Ledger data={data} country={country} year={year} view={main} images={images} mode={mode} title={`In ${year}, ${what} buys`}
-              overrides={overrides} setOverride={set.override} />
           </div>
         </aside>
-
-        {note && <p className="currency-note">{note}</p>}
       </section>
 
       <Wages data={data} country={country} start={ghostYear} year={year} images={images} />
@@ -210,45 +226,47 @@ export default function Explore({ data, images, reduced, state, set, overrides }
   )
 }
 
-export function CountrySelect({ data, value, onChange, ...rest }) {
-  const sorted = [...data.countries].sort((a, b) => a.name.localeCompare(b.name))
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} {...rest}>
-      {sorted.map((c) => (
-        <option key={c.iso3} value={c.iso3}>
-          {c.name} ({c.symbol.trim()})
-        </option>
-      ))}
-    </select>
-  )
-}
+const TAG = { observed: 'Measured', reference: 'Published', derived: 'Market', estimated: 'Estimate', yours: 'Yours' }
+const SHORT_NAME = { bread: 'White bread', milk: 'Milk', fuel: 'Petrol', ticket: 'Cinema ticket', gold: 'Gold' }
 
-/** Item list with source labels and the "set your own price" editor. */
-export function Ledger({ data, country, year, view, images, mode, title, overrides, setOverride, compact }) {
+/** The museum placard: one row per item with count, comparison, price and source tag. */
+export function Placard({ data, country, year, view, ghostView, ghostYear, images, mode, overrides, setOverride, title }) {
   const [editing, setEditing] = useState(null)
   const hourly = hourlyAt(data, country, year)
   return (
-    <div className={`ledger${compact ? ' compact' : ''}`}>
-      {title && <h3>{title}</h3>}
+    <div className="placard">
+      <div className="pl-head">
+        <span>{title ?? `In ${year}`}</span>
+        {ghostView && <span className="pl-head-ghost">{ghostYear}</span>}
+      </div>
       <ul>
         {data.items.map((it) => {
           const p = view.prices[it.id]
           const c = view.counts[it.id]
+          const g = ghostView?.counts[it.id]
           const mine = overrides?.[country.iso3]?.[it.id]
+          const src = p && data.sources?.[p.source]?.name
+          const price = p
+            ? mode === 'hours'
+              ? `${fmtHours(hourly ? p.value / hourly : null)} of work each`
+              : `${fmtMoney(country, p.value)} each`
+            : 'No source yet'
           return (
             <li key={it.id} className={p ? '' : 'missing'}>
-              <span className="ledger-art"><ItemArt id={it.id} images={images} /></span>
-              <span className="ledger-main">
-                <b>{c == null ? 'no data' : fmtCount(c)}</b> {c == null ? it.name.toLowerCase() : itemNoun(it, c)}
-                <small>
-                  {p
-                    ? `${mode === 'hours' ? `${fmtHours(hourly ? p.value / hourly : null)} of work` : fmtMoney(country, p.value)} per ${it.unit} · ${kindLabel(p)}`
-                    : 'no price source yet'}
-                </small>
+              <span className="pl-art"><ItemArt id={it.id} images={images} /></span>
+              <span className="pl-num">{c == null ? '—' : fmtCount(c)}</span>
+              <span className="pl-text">
+                <span className="pl-name">{c == null ? SHORT_NAME[it.id] : itemNoun(it, c)}</span>
+                <span className="pl-meta">{price}</span>
+              </span>
+              {ghostView && <span className="pl-ghost">{g == null ? '—' : fmtCount(g)}</span>}
+              <span className={`pl-tag t-${p?.kind ?? 'none'}`} title={p ? `${kindLabel(p)}${src ? ` · ${src}` : ''}` : 'No source for this item and country'}>
+                {p ? TAG[p.kind] : 'No data'}
               </span>
               {setOverride && editing !== it.id && (
-                <button className="edit-price" onClick={() => setEditing(it.id)} aria-label={`Set your own price for ${it.name}`} title="Use your own local price">
-                  {mine ? '★' : '✎'}
+                <button className={`pl-edit${mine ? ' on' : ''}`} onClick={() => setEditing(it.id)}
+                  aria-label={`Use your own price for ${it.name}`} title={mine ? 'Edit your price' : 'Use your own local price'}>
+                  <Icon.Pencil size={14} />
                 </button>
               )}
               {editing === it.id && (
@@ -292,16 +310,24 @@ function PriceForm({ item, country, year, initial, hasOwn, onSave, onRemove, onC
       onKeyDown={(e) => e.key === 'Escape' && onCancel()}
     >
       <label htmlFor={`own-${item.id}`}>
-        Your price for {item.unit} in {year} ({country.currency})
+        Your price for {item.unit} in {year}
       </label>
       <div className="price-form-row">
-        <input id={`own-${item.id}`} ref={ref} inputMode="decimal" value={val} placeholder="e.g. 45"
+        <span className="pf-cur">{country.currency}</span>
+        <input id={`own-${item.id}`} ref={ref} inputMode="decimal" value={val} placeholder="0.00"
           onChange={(e) => setVal(e.target.value.replace(/[^\d.]/g, ''))} />
-        <button className="btn-gold small" disabled={!(n > 0)}>Save</button>
+        <button className="btn small" disabled={!(n > 0)}>Save</button>
         <button type="button" className="btn-text" onClick={onCancel}>Cancel</button>
       </div>
-      {hasOwn && <button type="button" className="btn-text" onClick={onRemove}>Remove my price</button>}
-      <small>Saved only in this browser. Other years are scaled from it with CPI.</small>
+      <small>
+        Saved only in this browser; other years are scaled from it with CPI.
+        {hasOwn && (
+          <>
+            {' '}
+            <button type="button" className="btn-text inline" onClick={onRemove}>Remove my price</button>
+          </>
+        )}
+      </small>
     </form>
   )
 }
@@ -330,11 +356,11 @@ function Wages({ data, country, start, year, images }) {
   return (
     <section className="wages" id="wages">
       <div className="wages-head">
-        <p className="eyebrow">The second layer</p>
+        <p className="eyebrow">Income <span className="sep" /> {start} to {year}</p>
         <h2>Did income keep up?</h2>
         <p className="proxy-note">
           “Average income” here is <b>GDP per capita</b>, a proxy for how much a country produces per person.
-          It is not the same as a salary or take-home pay. See <a href="#/methods">Methods</a>.
+          It is not the same as a salary or take-home pay. <a href="#/methods">How this is measured</a>
         </p>
       </div>
 
@@ -356,7 +382,7 @@ function Wages({ data, country, start, year, images }) {
         )}
       </p>
       {(pA?.kind === 'estimated' || pB?.kind === 'estimated') && (
-        <p className="fine">Item prices marked “estimated from CPI” are scaled from the nearest year with a measured price.</p>
+        <p className="fine">Item prices marked “Estimate” are scaled from the nearest year with a measured price using the consumer price index.</p>
       )}
 
       <div className="stats">
@@ -366,13 +392,13 @@ function Wages({ data, country, start, year, images }) {
           <span className="stat-sub">{year} · was {fmtMoney(country, monthA, { digits: monthA != null && monthA < 10 ? 2 : 0 })} in {start}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">Income grew</span>
-          <span className="stat-value income">{incX == null ? 'no data' : `${fmtCount(incX)}×`}</span>
+          <span className="stat-label"><i className="key income" />Income grew</span>
+          <span className="stat-value">{incX == null ? 'no data' : `${fmtCount(incX)}×`}</span>
           <span className="stat-sub">{start} → {year}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">Prices grew</span>
-          <span className="stat-value price">{cpiX == null ? 'no data' : `${fmtCount(cpiX)}×`}</span>
+          <span className="stat-label"><i className="key price" />Prices grew</span>
+          <span className="stat-value">{cpiX == null ? 'no data' : `${fmtCount(cpiX)}×`}</span>
           <span className="stat-sub">consumer price index</span>
         </div>
         <div className="stat">
@@ -384,7 +410,7 @@ function Wages({ data, country, start, year, images }) {
 
       <div className="wages-grid">
         <div className="months">
-          <h3>Months of income to buy one…</h3>
+          <h3>Months of income to buy one</h3>
           <table>
             <thead>
               <tr><th>Item</th><th>{start}</th><th>{year}</th></tr>
@@ -398,14 +424,12 @@ function Wages({ data, country, start, year, images }) {
                 const better = ma != null && mb != null ? mb < ma : null
                 return (
                   <tr key={it.id}>
-                    <td><span className="row-art"><ItemArt id={it.id} images={images} /></span>{it.name} <small>({it.unit})</small></td>
+                    <td><span className="row-art"><ItemArt id={it.id} images={images} /></span>{it.name} <small>{it.unit}</small></td>
                     <td>{fmtShareOfMonth(ma)}</td>
                     <td>
                       {fmtShareOfMonth(mb)}
                       {better != null && (
-                        <span className={`trend ${better ? 'up' : 'down'}`} title={better ? 'More affordable' : 'Less affordable'}>
-                          {better ? '▼ cheaper' : '▲ dearer'}
-                        </span>
+                        <span className={`trend ${better ? 'up' : 'down'}`}>{better ? '↓ cheaper' : '↑ dearer'}</span>
                       )}
                     </td>
                   </tr>
@@ -413,7 +437,7 @@ function Wages({ data, country, start, year, images }) {
               })}
             </tbody>
           </table>
-          <p className="fine">A month of income = GDP per capita ÷ 12. “Days” and “hours” are fractions of that month.</p>
+          <p className="fine">A month of income = GDP per capita ÷ 12. Days and hours are fractions of that month.</p>
         </div>
         <IncomeChart data={data} country={country} start={start} year={year} />
       </div>
@@ -484,14 +508,14 @@ function BirthYear({ data, country, amount, now, onClose, onApply, reduced, imag
         role="dialog"
         aria-modal="true"
         aria-labelledby="by-title"
-        initial={reduced ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.98 }}
+        initial={reduced ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12 }}
-        transition={{ duration: 0.3, ease: [0.2, 0.7, 0.2, 1] }}
+        exit={{ opacity: 0, y: 10 }}
+        transition={{ duration: 0.32, ease: [0.2, 0.7, 0.2, 1] }}
         onClick={(e) => e.stopPropagation()}
       >
-        <button className="modal-x" onClick={onClose} aria-label="Close">×</button>
-        <p className="eyebrow">Birth-year mode</p>
+        <button className="modal-x" onClick={onClose} aria-label="Close"><Icon.Close /></button>
+        <p className="eyebrow">Birth-year mode <span className="sep" /> {country.name}</p>
         <h2 id="by-title">The year you were born</h2>
         <form
           className="by-form"
@@ -503,22 +527,24 @@ function BirthYear({ data, country, amount, now, onClose, onApply, reduced, imag
             onApply(by)
           }}
         >
-          <input ref={input} inputMode="numeric" placeholder="e.g. 1998" value={val} aria-label="Birth year"
+          <input ref={input} inputMode="numeric" placeholder="1998" value={val} aria-label="Birth year"
             onChange={(e) => setVal(e.target.value.replace(/[^\d]/g, '').slice(0, 4))} />
-          <button className="btn-gold" disabled={!valid}>Show me</button>
+          <button className="btn" disabled={!valid}>Show me <Icon.Arrow /></button>
         </form>
         {val.length === 4 && !valid && <p className="fine">Pick a year between {data.years[0]} and {now}.</p>}
         {shown && (
           <div className="by-result">
             <p className="by-sentence">
-              The year you were born, <em>{shown}</em>, {money} in {country.name} bought
-              {lines.length ? '' : ' … we have no price data for that year.'}
+              In <em>{shown}</em>, {money} bought
+              {lines.length ? '' : ' … there is no price data for that year.'}
             </p>
             <ul ref={list}>
               {lines.map(({ it, a, b }) => (
                 <li key={it.id}>
                   <span className="by-art"><ItemArt id={it.id} images={images} /></span>
-                  <span><b>{fmtCount(a)}</b> {itemNoun(it, a)} <span className="muted">→ {fmtCount(b)} in {now}</span></span>
+                  <b>{fmtCount(a)}</b>
+                  <span className="by-name">{itemNoun(it, a)}</span>
+                  <span className="by-now">{fmtCount(b)} in {now}</span>
                 </li>
               ))}
             </ul>
@@ -526,15 +552,15 @@ function BirthYear({ data, country, amount, now, onClose, onApply, reduced, imag
             {lines.length > 0 && (
               <div className="share">
                 {!card ? (
-                  <button className="btn-gold" onClick={makeCard} disabled={busy}>{busy ? 'Drawing…' : 'Make a share image'}</button>
+                  <button className="btn" onClick={makeCard} disabled={busy}>{busy ? 'Rendering…' : 'Create share image'}</button>
                 ) : (
                   <>
                     <img className="share-preview" src={card.url} alt={`Share card: ${money} in ${country.name}, ${shown} vs ${now}`} />
                     <div className="share-actions">
-                      <button className="btn-gold" onClick={() => downloadBlob(card.blob, fileName)}>Download PNG</button>
+                      <button className="btn" onClick={() => downloadBlob(card.blob, fileName)}><Icon.Download /> Download PNG</button>
                       {canShare && (
-                        <button className="btn-ghost inline" onClick={() => navigator.share({ files: [new File([card.blob], fileName, { type: 'image/png' })], title: 'Time Machine for Money' }).catch(() => {})}>
-                          Share…
+                        <button className="btn ghost" onClick={() => navigator.share({ files: [new File([card.blob], fileName, { type: 'image/png' })], title: 'Time Machine for Money' }).catch(() => {})}>
+                          <Icon.Share /> Share
                         </button>
                       )}
                     </div>
@@ -542,7 +568,7 @@ function BirthYear({ data, country, amount, now, onClose, onApply, reduced, imag
                 )}
               </div>
             )}
-            <p className="fine">The pedestals now show {shown} (ghost) against {now}.</p>
+            <p className="fine">The exhibit now shows {shown} (left, faded) against {now}.</p>
           </div>
         )}
       </m.div>

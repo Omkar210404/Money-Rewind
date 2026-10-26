@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, m } from 'framer-motion'
 import { read, store } from './data.js'
+import { Drag } from './Icons.jsx'
 
 // Thin gold timeline: drag, click, or use the arrow keys.
 export default function Timeline({ min, max, value, onChange, ghostYear, nowYear }) {
@@ -114,10 +115,8 @@ export default function Timeline({ min, max, value, onChange, ghostYear, nowYear
                 exit={{ opacity: 0, y: 6 }}
                 transition={{ delay: 1.2, duration: 0.5 }}
               >
-                <span className="tl-hint-arrows" aria-hidden="true">
-                  ‹ ›
-                </span>
-                {coarse ? 'Drag the timeline to travel in time' : 'Drag the timeline (or press ← →) to travel in time'}
+                <Drag className="tl-hint-icon" />
+                {coarse ? 'Drag to travel through time' : 'Drag, or use ← →, to travel through time'}
               </m.div>
             )}
           </AnimatePresence>

@@ -41,7 +41,7 @@ function spawn(x, y, opts = {}) {
     y,
     vx: (opts.vx ?? 18) + Math.random() * 40,
     vy: (opts.vy ?? -10) - Math.random() * 30,
-    size: 2 + Math.random() * (opts.big ? 7 : 5),
+    size: 1.1 + Math.random() * (opts.big ? 4 : 2.4),
     life,
     age: 0,
     seed: Math.random() * 6.28,
@@ -51,7 +51,7 @@ function spawn(x, y, opts = {}) {
 /** Dissolve a rectangle (viewport coords) into dust drifting to the right. */
 export function emitDust(rect, amount = 1) {
   if (!sys.enabled || !sys.ctx || !rect) return
-  const n = Math.min(70, Math.round((rect.width * rect.height) / 90) + 10) * amount
+  const n = Math.min(60, Math.round((rect.width * rect.height) / 110) + 8) * amount
   const room = sys.max - sys.list.length
   for (let i = 0; i < Math.min(n, room); i++) {
     spawn(rect.left + Math.random() * rect.width, rect.top + Math.random() * rect.height, { big: Math.random() < 0.15 })
@@ -80,7 +80,7 @@ function tick(now) {
   ctx.clearRect(0, 0, sys.w, sys.h)
 
   if (sys.stream) {
-    sys.streamAcc += dt * 9 // particles per second
+    sys.streamAcc += dt * 4 // particles per second
     if (sys.streamAcc >= 1) {
       const r = sys.stream()
       while (sys.streamAcc >= 1) {

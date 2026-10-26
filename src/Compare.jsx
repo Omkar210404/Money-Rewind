@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import Pile from './Pile.jsx'
 import Timeline from './Timeline.jsx'
-import { CountrySelect, Ledger, ModeSeg, NumberInput, useCounts } from './Explore.jsx'
+import { CountrySelect, ModeTabs, NumberInput, Placard, useCounts } from './Explore.jsx'
+import * as Icon from './Icons.jsx'
 import { fmtCount, fmtMoney, fxAt, hourlyAt, latestYear } from './data.js'
 
 // Two countries side by side on one shared timeline. "Same money" converts
@@ -47,7 +48,7 @@ export default function Compare({ data, images, reduced, state, set }) {
       </div>
       <Pile counts={v.counts} items={data.items} images={images} reduced={reduced}
         label={`${c.name} in ${year}: ` + data.items.map((it) => `${v.counts[it.id] == null ? 'no data' : fmtCount(v.counts[it.id])} ${it.plural}`).join(', ')} />
-      <Ledger data={data} country={c} year={year} view={v} images={images} mode={mode} compact />
+      <Placard data={data} country={c} year={year} view={v} images={images} mode={mode} title={`${c.name} · ${year}`} />
     </div>
   )
 
@@ -57,14 +58,14 @@ export default function Compare({ data, images, reduced, state, set }) {
         <div className="spotlight two" aria-hidden="true" />
         <div className="cmp-head">
           <div>
-            <p className="eyebrow">Compare countries · {year}</p>
+            <p className="eyebrow">Compare countries <span className="sep" /> {year}</p>
             <h1 className="cmp-title">
               {title} <em>in {A.name}</em> vs <em>{isHours ? `in ${B.name}` : `the same money in ${B.name}`}</em>
             </h1>
           </div>
           <div className="cmp-controls glass">
-            <ModeSeg active="compare" go={set.mode} />
-            <div className="seg two" role="group" aria-label="Compare by">
+            <ModeTabs active="compare" go={set.mode} />
+            <div className="seg" role="group" aria-label="Compare by">
               <button className={!isHours ? 'on' : ''} aria-pressed={!isHours} onClick={() => set.compareBasis('prices')}>Same money</button>
               <button className={isHours ? 'on' : ''} aria-pressed={isHours} onClick={() => set.compareBasis('hours')}>Same hours of work</button>
             </div>
@@ -73,7 +74,7 @@ export default function Compare({ data, images, reduced, state, set }) {
                 <label htmlFor="cmp-a">Country A</label>
                 <CountrySelect id="cmp-a" data={data} value={A.iso3} onChange={set.compareA} />
               </div>
-              <button className="swap" onClick={set.swap} aria-label="Swap countries" title="Swap">⇄</button>
+              <button className="swap" onClick={set.swap} aria-label="Swap countries" title="Swap"><Icon.Swap /></button>
               <div className="field">
                 <label htmlFor="cmp-b">Country B</label>
                 <CountrySelect id="cmp-b" data={data} value={B.iso3} onChange={set.compareB} />

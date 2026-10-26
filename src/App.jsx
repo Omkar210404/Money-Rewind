@@ -157,16 +157,11 @@ export default function App() {
 
 function Logo() {
   return (
-    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
-      <defs>
-        <radialGradient id="lg" cx="40%" cy="35%" r="70%">
-          <stop offset="0" stopColor="#f6dc9c" />
-          <stop offset=".6" stopColor="#d9a54a" />
-          <stop offset="1" stopColor="#8a6120" />
-        </radialGradient>
-      </defs>
-      <circle cx="16" cy="16" r="13" fill="url(#lg)" />
-      <path d="M11 9.5h10M11 22.5h10M12 9.5c0 4 8 4 8 6.5s-8 2.5-8 6.5M20 9.5c0 4-8 4-8 6.5s8 2.5 8 6.5" fill="none" stroke="#3b2a0e" strokeWidth="1.4" strokeLinecap="round" />
+    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true" className="logo">
+      <circle cx="16" cy="16" r="14.5" fill="none" stroke="#d9a54a" strokeWidth="1" />
+      <circle cx="16" cy="16" r="11.5" fill="none" stroke="#d9a54a" strokeWidth=".6" opacity=".45" />
+      <path d="M11.5 9.5h9M11.5 22.5h9M12.5 9.5c0 4 7 4.4 7 6.5s-7 2.5-7 6.5M19.5 9.5c0 4-7 4.4-7 6.5s7 2.5 7 6.5" fill="none" stroke="#f1e7d0" strokeWidth="1.1" strokeLinecap="round" />
+      <path d="M14 20.6h4l-2-2.2z" fill="#d9a54a" />
     </svg>
   )
 }
@@ -175,7 +170,7 @@ function TopBar({ route, online, load, live: liveData, fresh, country }) {
   const live = online && fresh
   const updated = load.data?.sources?.wb?.updated
   const label =
-    load.status === 'loading' ? 'Loading data' : !online ? 'Offline · saved data' : live ? 'Live' : liveData ? 'Saved rates' : 'Connecting'
+    load.status === 'loading' ? 'Loading' : !online ? 'Offline' : live ? 'Live' : liveData ? 'Saved' : 'Connecting'
   const nav = [
     ['explore', 'Explore'],
     ['compare', 'Compare'],
@@ -199,7 +194,7 @@ function TopBar({ route, online, load, live: liveData, fresh, country }) {
       <div className={`live${live ? ' on' : ''}`} title={`${live ? 'Live exchange rates and metal prices' : 'Showing saved values'}${updated ? ` · World Bank data updated ${updated}` : ''}`}>
         <span className="dot" />
         <span className="live-label">{label}</span>
-        {updated && <span className="live-date">WB {updated}</span>}
+        {updated && <span className="live-date">Data {new Date(updated).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
       </div>
       </div>
       <Ticker live={liveData} fresh={live} country={country} />
