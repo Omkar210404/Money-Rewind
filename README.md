@@ -1,5 +1,7 @@
 # Money Rewind
 
+**Live site:** https://omkar210404.github.io/Money-Rewind/
+
 See what money buys across time, and whether income kept up. Pick an amount and a country, drag the gold timeline, and a pile of everyday things (bread, milk, petrol, a cinema ticket, a gram of gold) grows or dissolves into gold dust on a pedestal, year by year since 1960. Built on open World Bank data, with every estimate labelled.
 
 React (Vite, plain JSX) · Framer Motion · Canvas 2D particles · d3-scale · one Python data script · works offline.
